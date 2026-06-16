@@ -226,6 +226,9 @@ importers:
 
   packages/player-store:
     dependencies:
+      '@zydka/audio-engine':
+        specifier: workspace:*
+        version: link:../audio-engine
       zustand:
         specifier: ^5.0.14
         version: 5.0.14

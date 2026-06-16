@@ -214,6 +214,16 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
 
+  packages/audio-engine:
+    dependencies:
+      howler:
+        specifier: ^2.2.4
+        version: 2.2.4
+    devDependencies:
+      '@types/howler':
+        specifier: ^2.2.13
+        version: 2.2.13
+
 packages:
 
   '@turbo/darwin-64@2.9.18':
@@ -246,6 +256,12 @@ packages:
     cpu: [arm64]
     os: [win32]
 
+  '@types/howler@2.2.13':
+    resolution: {integrity: sha512-40+EBjqIHHrC4VShlz/7i0lBUsE3QkgzZinQQji74Hd8sBkJZUBaT7LWFLK6rcabsDOOQpoMbEJvtaFQwxOu/g==}
+
+  howler@2.2.4:
+    resolution: {integrity: sha512-iARIBPgcQrwtEr+tALF+rapJ8qSc+Set2GJQl7xT1MQzWaVkFebdJhR3alVlSiUf5U7nAANKuj3aWpwerocD5w==}
+
   turbo@2.9.18:
     resolution: {integrity: sha512-bwabv6PupzeavybzEoArBAkwq5fnzwf8OFnRtpHwnviFWuwJPFxtyH+aVp36TmIqK3aYYgtTJ3J0m2ysxxSzQg==}
     hasBin: true
@@ -274,6 +290,10 @@ snapshots:
 
   '@turbo/windows-arm64@2.9.18':
     optional: true
+
+  '@types/howler@2.2.13': {}
+
+  howler@2.2.4: {}
 
   turbo@2.9.18:
     optionalDependencies:

@@ -4,6 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "tsup",
     "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0"
   }
 }

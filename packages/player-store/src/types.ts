@@ -1,9 +1,10 @@
-import type { AudioTrack } from "@zydka/audio-engine";
+import type { AudioEngineStatus, AudioTrack } from "@zydka/audio-engine";
 
 export type ITrack = AudioTrack;
 
 export interface IPlayerState {
   currentTrack: ITrack | null;
+  status: AudioEngineStatus;
   isPlaying: boolean;
   error: string | null;
 

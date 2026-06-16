@@ -214,6 +214,12 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
 
+  apps/demo-player:
+    dependencies:
+      '@zydka/player-store':
+        specifier: workspace:*
+        version: link:../../packages/player-store
+
   packages/audio-engine:
     dependencies:
       howler:

@@ -1,5 +1,5 @@
 import { AudioEngine } from "@zydka/audio-engine";
-import { create } from "zustand";
+import { createStore } from "zustand/vanilla";
 import type { IPlayerState, ITrack } from "./types";
 
 const audioEngine = new AudioEngine();
@@ -41,7 +41,7 @@ audioEngine.on("error", ({ message }) => {
   });
 });
 
-export const usePlayerStore = create<IPlayerState>((set, get) => ({
+export const usePlayerStore = createStore<IPlayerState>((set, get) => ({
   currentTrack: null,
   status: "idle",
   isPlaying: false,

@@ -221,6 +221,10 @@ importers:
         version: link:../../packages/player-store
 
   apps/zydka-plugin:
+    dependencies:
+      '@zydka/wordpress-bridge':
+        specifier: workspace:*
+        version: link:../../packages/wordpress-bridge
     devDependencies:
       tsup:
         specifier: ^8.0.0

@@ -1,23 +1,48 @@
-/**
- * Zydka Player — Bootstrap WordPress
- *
- * Point d'entrée TypeScript du plugin.
- * Ce fichier sera compilé et bundlé vers assets/js/zydka-player.js.
- *
- * Prochaine étape : intégrer @zydka/wordpress-bridge pour piloter
- * le lecteur audio depuis le shortcode [zydka_player].
- */
+import { WordPressBridge } from '@zydka/wordpress-bridge';
+
+interface ZydkaTrack {
+  id: number;
+  audioUrl: string;
+  title?: string;
+  artist?: string;
+  duration?: number;
+}
+
+interface ZydkaPlayerState {
+  currentTrack: ZydkaTrack | null;
+  status: 'idle' | 'loading' | 'ready' | 'playing' | 'paused' | 'ended' | 'error';
+  isPlaying: boolean;
+  error: string | null;
+}
+
+interface ZydkaPlayerAPI {
+  play: (track: ZydkaTrack) => void;
+  pause: () => void;
+  state: () => ZydkaPlayerState;
+}
+
+declare global {
+  interface Window {
+    ZydkaPlayer: ZydkaPlayerAPI | undefined;
+  }
+}
 
 function bootstrap(): void {
   const root = document.getElementById('zydka-player-root');
 
+  // Ne rien faire si le shortcode [zydka_player] n'est pas présent dans la page.
   if (!root) return;
 
-  // TODO: initialiser @zydka/wordpress-bridge ici
-  // import { WordPressBridge } from '@zydka/wordpress-bridge';
-  // new WordPressBridge(root).mount();
+  window.ZydkaPlayer = {
+    play: (track: ZydkaTrack) => WordPressBridge.play(track),
+    pause: () => WordPressBridge.pause(),
+    state: () => {
+      const { currentTrack, status, isPlaying, error } = WordPressBridge.state();
+      return { currentTrack, status, isPlaying, error };
+    },
+  };
 
-  console.log('[Zydka Player] Root element found — player bootstrap ready.');
+  console.log('[Zydka Player] Bridge initialized — window.ZydkaPlayer ready.');
 }
 
 document.addEventListener('DOMContentLoaded', bootstrap);

@@ -1,9 +1,8 @@
-export interface PauseButtonProps {
-  label?: string;
-}
+import { PlayerController } from "@zydka/player-store";
 
-export function PauseButton(
-  props: PauseButtonProps = {},
-): string {
-  return props.label ?? "Pause";
+export function PauseButton() {
+  return {
+    label: "Pause",
+    click: () => PlayerController.pause(),
+  };
 }

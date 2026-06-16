@@ -1,10 +1,9 @@
-export interface TrackCardProps {
-  title: string;
-  artist?: string;
-}
+import { PlayerController } from "@zydka/player-store";
+import type { ITrack } from "@zydka/player-store";
 
-export function TrackCard(
-  props: TrackCardProps,
-): string {
-  return `${props.title} - ${props.artist ?? "Unknown Artist"}`;
+export function TrackCard(track: ITrack) {
+  return {
+    track,
+    play: () => PlayerController.load(track),
+  };
 }

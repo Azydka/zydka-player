@@ -1,9 +1,8 @@
-export interface PlayButtonProps {
-  label?: string;
-}
+import { PlayerController } from "@zydka/player-store";
 
-export function PlayButton(
-  props: PlayButtonProps = {},
-): string {
-  return props.label ?? "Play";
+export function PlayButton() {
+  return {
+    label: "Play",
+    click: () => PlayerController.play(),
+  };
 }

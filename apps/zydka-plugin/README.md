@@ -123,6 +123,30 @@ Résultat :
 - `window.ZydkaPlayer.getCurrentIndex()` fonctionnel.
 - Lecture, pause, progression et seek toujours opérationnels.
 
+### 23/06/2026 — louis94.com — Shortcode playlist
+
+Validation réussie du shortcode playlist du Zydka Player sur louis94.com.
+
+Résultat :
+
+- `[zydka_playlist]` fonctionnel.
+- `[zydka_track]` fonctionnel.
+- Queue alimentée depuis le contenu WordPress.
+- Navigation Previous / Next opérationnelle entre deux vraies tracks de shortcode.
+- Lecture, pause, progression, durée et seek toujours opérationnels.
+- `window.ZydkaPlayer.getQueue()` retourne bien les tracks déclarées dans le shortcode.
+- Le shortcode single-track `[zydka_player]` reste fonctionnel.
+- Point d’attention validé : ne pas utiliser `[zydka_player]` au-dessus d’une playlist ; utiliser uniquement `[zydka_playlist] ... [/zydka_playlist]` pour une playlist.
+
+Exemple validé :
+
+```text
+[zydka_playlist]
+[zydka_track id="new-york-shit" title="New York Shit" artist="Louis94" src="https://www.louis94.com/wp-content/uploads/2026/06/04.-New-York-Shit-feat.-Swizz-Beatz.mp3"]
+[zydka_track id="lifes-a-bitch-arsenal-mix" title="Life's a Bitch — Arsenal Mix" artist="Louis94" src="https://www.louis94.com/wp-content/uploads/2026/06/2-06-Lifes-a-Bitch-feat.-AZ-Arsenal-Mix.m4a"]
+[/zydka_playlist]
+```
+
 ## Contraintes
 
 - Plugin autonome, sans dépendance à un thème WordPress.

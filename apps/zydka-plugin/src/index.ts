@@ -133,7 +133,13 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
   root.innerHTML = '';
 
   const card = document.createElement('div');
-  card.className = 'zydka-player-card';
+  card.className = 'zydka-player-card zydka-player-state-idle';
+
+  const header = document.createElement('div');
+  header.className = 'zydka-player-header';
+
+  const textBlock = document.createElement('div');
+  textBlock.className = 'zydka-player-track-meta';
 
   const eyebrow = document.createElement('p');
   eyebrow.className = 'zydka-player-eyebrow';
@@ -147,32 +153,41 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
   artist.className = 'zydka-player-artist';
   artist.textContent = renderText(fallbackDisplayTrack.artist);
 
+  const trackCounter = document.createElement('p');
+  trackCounter.className = 'zydka-player-counter';
+  trackCounter.textContent = 'Track 1 / 1';
+
+  const status = document.createElement('p');
+  status.className = 'zydka-player-status';
+  status.append('Status: ');
+
+  const statusValue = document.createElement('span');
+  statusValue.textContent = 'idle';
+  status.append(statusValue);
+
+  textBlock.append(eyebrow, title, artist);
+  header.append(textBlock, trackCounter);
+
   const actions = document.createElement('div');
   actions.className = 'zydka-player-actions';
 
   const previousButton = document.createElement('button');
-  previousButton.className = 'zydka-player-button zydka-player-button-secondary';
+  previousButton.className = 'zydka-player-button zydka-player-nav-button';
   previousButton.type = 'button';
   previousButton.textContent = 'Previous';
 
-  const playButton = document.createElement('button');
-  playButton.className = 'zydka-player-button';
-  playButton.type = 'button';
-  playButton.textContent = 'Play';
-
-  const pauseButton = document.createElement('button');
-  pauseButton.className = 'zydka-player-button zydka-player-button-secondary';
-  pauseButton.type = 'button';
-  pauseButton.textContent = 'Pause';
+  const toggleButton = document.createElement('button');
+  toggleButton.className = 'zydka-player-button zydka-player-toggle-button';
+  toggleButton.type = 'button';
+  toggleButton.textContent = 'Play';
+  toggleButton.setAttribute('aria-label', 'Play');
 
   const nextButton = document.createElement('button');
-  nextButton.className = 'zydka-player-button zydka-player-button-secondary';
+  nextButton.className = 'zydka-player-button zydka-player-nav-button';
   nextButton.type = 'button';
   nextButton.textContent = 'Next';
 
-  const trackCounter = document.createElement('p');
-  trackCounter.className = 'zydka-player-counter';
-  trackCounter.textContent = 'Track 1 / 1';
+  actions.append(previousButton, toggleButton, nextButton);
 
   const timeline = document.createElement('div');
   timeline.className = 'zydka-player-timeline';
@@ -198,21 +213,17 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
   duration.className = 'zydka-player-time';
   duration.textContent = '0:00';
 
-  const status = document.createElement('p');
-  status.className = 'zydka-player-status';
-  status.append('Status: ');
+  timeline.append(currentTime, progress, duration);
 
-  const statusValue = document.createElement('span');
-  statusValue.textContent = 'idle';
-  status.append(statusValue);
+  const footer = document.createElement('div');
+  footer.className = 'zydka-player-footer';
 
   const error = document.createElement('p');
   error.className = 'zydka-player-error';
   error.hidden = true;
 
-  actions.append(previousButton, playButton, pauseButton, nextButton);
-  timeline.append(currentTime, progress, duration);
-  card.append(eyebrow, title, artist, actions, trackCounter, timeline, status, error);
+  footer.append(status, error);
+  card.append(header, actions, timeline, footer);
   root.append(card);
 
   const refreshState = (): void => {
@@ -228,11 +239,14 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
     const progressPercent = trackDuration > 0 ? Math.min(100, (position / trackDuration) * 100) : 0;
     const displayIndex = queue.length > 0 ? Math.max(0, currentIndex) + 1 : 0;
 
+    card.className = `zydka-player-card zydka-player-state-${state.status}`;
     title.textContent = renderText(displayTrack?.title ?? fallbackDisplayTrack.title);
     artist.textContent = renderText(displayTrack?.artist ?? fallbackDisplayTrack.artist);
     trackCounter.textContent = `Track ${displayIndex} / ${queue.length}`;
     previousButton.disabled = currentIndex <= 0;
     nextButton.disabled = currentIndex >= queue.length - 1;
+    toggleButton.textContent = state.isPlaying ? 'Pause' : 'Play';
+    toggleButton.setAttribute('aria-label', state.isPlaying ? 'Pause' : 'Play');
     statusValue.textContent = state.status;
     currentTime.textContent = formatTime(position);
     duration.textContent = formatTime(trackDuration);
@@ -247,14 +261,16 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
     refreshState();
   });
 
-  playButton.addEventListener('click', () => {
-    const currentIndex = window.ZydkaPlayer?.getCurrentIndex() ?? 0;
-    window.ZydkaPlayer?.playAt(Math.max(0, currentIndex));
-    refreshState();
-  });
+  toggleButton.addEventListener('click', () => {
+    const state = window.ZydkaPlayer?.state();
 
-  pauseButton.addEventListener('click', () => {
-    window.ZydkaPlayer?.pause();
+    if (state?.isPlaying) {
+      window.ZydkaPlayer?.pause();
+    } else {
+      const currentIndex = window.ZydkaPlayer?.getCurrentIndex() ?? 0;
+      window.ZydkaPlayer?.playAt(Math.max(0, currentIndex));
+    }
+
     refreshState();
   });
 

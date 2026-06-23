@@ -194,7 +194,13 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
   nextButton.type = 'button';
   nextButton.textContent = 'Next';
 
-  actions.append(previousButton, toggleButton, nextButton);
+  const queueButton = document.createElement('button');
+  queueButton.className = 'zydka-player-button zydka-player-queue-button';
+  queueButton.type = 'button';
+  queueButton.textContent = 'Queue';
+  queueButton.setAttribute('aria-expanded', 'false');
+
+  actions.append(previousButton, toggleButton, nextButton, queueButton);
 
   const timeline = document.createElement('div');
   timeline.className = 'zydka-player-timeline';
@@ -249,6 +255,33 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
   volumeValue.textContent = '100%';
 
   volumeControl.append(muteButton, volumeLabel, volumeSlider, volumeValue);
+
+  const queuePanel = document.createElement('div');
+  queuePanel.className = 'zydka-player-queue-panel';
+  queuePanel.hidden = true;
+  queuePanel.setAttribute('aria-hidden', 'true');
+
+  const queuePanelHeader = document.createElement('div');
+  queuePanelHeader.className = 'zydka-player-queue-header';
+
+  const queuePanelTitle = document.createElement('h3');
+  queuePanelTitle.className = 'zydka-player-queue-title';
+  queuePanelTitle.textContent = 'Playlist';
+
+  const closeQueueButton = document.createElement('button');
+  closeQueueButton.className = 'zydka-player-queue-close';
+  closeQueueButton.type = 'button';
+  closeQueueButton.textContent = 'Close';
+  closeQueueButton.setAttribute('aria-label', 'Close playlist');
+
+  queuePanelHeader.append(queuePanelTitle, closeQueueButton);
+
+  const queueList = document.createElement('div');
+  queueList.className = 'zydka-player-queue-list';
+  queueList.setAttribute('role', 'list');
+
+  queuePanel.append(queuePanelHeader, queueList);
+
   const footer = document.createElement('div');
   footer.className = 'zydka-player-footer';
 
@@ -257,8 +290,64 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
   error.hidden = true;
 
   footer.append(status, error);
-  card.append(header, actions, timeline, volumeControl, footer);
+  card.append(header, actions, timeline, volumeControl, footer, queuePanel);
   root.append(card);
+
+  const setQueuePanelOpen = (isOpen: boolean): void => {
+    queuePanel.hidden = !isOpen;
+    queuePanel.classList.toggle('is-open', isOpen);
+    queuePanel.setAttribute('aria-hidden', String(!isOpen));
+    queueButton.setAttribute('aria-expanded', String(isOpen));
+  };
+
+  const renderQueueItems = (queue: ZydkaTrack[], currentIndex: number): void => {
+    queueList.innerHTML = '';
+
+    if (queue.length === 0) {
+      const empty = document.createElement('p');
+      empty.className = 'zydka-player-queue-empty';
+      empty.textContent = 'No tracks in queue.';
+      queueList.append(empty);
+      return;
+    }
+
+    queue.forEach((track, index) => {
+      const item = document.createElement('button');
+      const isActive = index === currentIndex;
+
+      item.className = isActive
+        ? 'zydka-player-queue-item is-active'
+        : 'zydka-player-queue-item';
+      item.type = 'button';
+      item.setAttribute('role', 'listitem');
+      item.setAttribute('aria-current', isActive ? 'true' : 'false');
+
+      const number = document.createElement('span');
+      number.className = 'zydka-player-queue-number';
+      number.textContent = String(index + 1).padStart(2, '0');
+
+      const meta = document.createElement('span');
+      meta.className = 'zydka-player-queue-meta';
+
+      const itemTitle = document.createElement('span');
+      itemTitle.className = 'zydka-player-queue-track-title';
+      itemTitle.textContent = renderText(track.title || 'Track ' + String(index + 1));
+
+      const itemArtist = document.createElement('span');
+      itemArtist.className = 'zydka-player-queue-track-artist';
+      itemArtist.textContent = renderText(track.artist || '');
+
+      meta.append(itemTitle, itemArtist);
+      item.append(number, meta);
+
+      item.addEventListener('click', () => {
+        window.ZydkaPlayer?.playAt(index);
+        refreshState();
+      });
+
+      queueList.append(item);
+    });
+  };
 
   const refreshState = (): void => {
     const state = window.ZydkaPlayer?.state();
@@ -292,6 +381,7 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
     volumeValue.textContent = `${Math.round(volume * 100)}%`;
     muteButton.textContent = muted ? 'Unmute' : 'Mute';
     muteButton.setAttribute('aria-label', muted ? 'Unmute' : 'Mute');
+    renderQueueItems(queue, currentIndex);
     error.textContent = state.error ?? '';
     error.hidden = !state.error;
   };
@@ -317,6 +407,15 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
   nextButton.addEventListener('click', () => {
     window.ZydkaPlayer?.next();
     refreshState();
+  });
+
+  queueButton.addEventListener('click', () => {
+    setQueuePanelOpen(!queuePanel.classList.contains('is-open'));
+    refreshState();
+  });
+
+  closeQueueButton.addEventListener('click', () => {
+    setQueuePanelOpen(false);
   });
 
   muteButton.addEventListener('click', () => {
@@ -351,6 +450,12 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
 
     window.ZydkaPlayer?.seek(trackDuration * ratio);
     refreshState();
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      setQueuePanelOpen(false);
+    }
   });
 
   refreshState();

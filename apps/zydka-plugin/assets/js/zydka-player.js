@@ -2518,18 +2518,40 @@
   };
 
   // src/index.ts
+  function normalizeTrack(track) {
+    var _a;
+    const audioUrl = (_a = track.audioUrl) != null ? _a : track.src;
+    if (!audioUrl) {
+      console.error(
+        '[Zydka Player] Cannot play track: provide an audio URL with "audioUrl" or "src".',
+        track
+      );
+      return null;
+    }
+    return {
+      id: track.id,
+      audioUrl,
+      title: track.title,
+      artist: track.artist,
+      duration: track.duration
+    };
+  }
   function bootstrap() {
     const root = document.getElementById("zydka-player-root");
     if (!root) return;
     window.ZydkaPlayer = {
-      play: (track) => WordPressBridge.play(track),
+      play: (track) => {
+        const normalizedTrack = normalizeTrack(track);
+        if (!normalizedTrack) return;
+        WordPressBridge.play(normalizedTrack);
+      },
       pause: () => WordPressBridge.pause(),
       state: () => {
         const { currentTrack, status, isPlaying, error } = WordPressBridge.state();
         return { currentTrack, status, isPlaying, error };
       }
     };
-    console.log("[Zydka Player] Bridge initialized \u2014 window.ZydkaPlayer ready.");
+    console.log("[Zydka Player] Bridge initialized - window.ZydkaPlayer ready.");
   }
   document.addEventListener("DOMContentLoaded", bootstrap);
 })();

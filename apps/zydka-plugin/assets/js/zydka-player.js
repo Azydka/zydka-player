@@ -2518,6 +2518,12 @@
   };
 
   // src/index.ts
+  var testTrack = {
+    id: "demo-track",
+    title: "Demo Track",
+    artist: "Atelier Zydka",
+    src: "https://www.louis94.com/wp-content/uploads/2026/06/04.-New-York-Shit-feat.-Swizz-Beatz.mp3"
+  };
   function normalizeTrack(track) {
     var _a;
     const audioUrl = (_a = track.audioUrl) != null ? _a : track.src;
@@ -2536,6 +2542,49 @@
       duration: track.duration
     };
   }
+  function renderTestPlayer(root) {
+    root.innerHTML = `
+    <div class="zydka-player-card">
+      <p class="zydka-player-eyebrow">Zydka Player</p>
+      <h2 class="zydka-player-title">${testTrack.title}</h2>
+      <p class="zydka-player-artist">${testTrack.artist}</p>
+      <div class="zydka-player-actions">
+        <button class="zydka-player-button" type="button" data-zydka-action="play">Play</button>
+        <button class="zydka-player-button zydka-player-button-secondary" type="button" data-zydka-action="pause">Pause</button>
+      </div>
+      <p class="zydka-player-status">Status: <span data-zydka-status>idle</span></p>
+      <p class="zydka-player-error" data-zydka-error hidden></p>
+    </div>
+  `;
+    const statusElement = root.querySelector("[data-zydka-status]");
+    const errorElement = root.querySelector("[data-zydka-error]");
+    const playButton = root.querySelector('[data-zydka-action="play"]');
+    const pauseButton = root.querySelector('[data-zydka-action="pause"]');
+    const refreshState = () => {
+      var _a, _b;
+      const state = (_a = window.ZydkaPlayer) == null ? void 0 : _a.state();
+      if (!state) return;
+      if (statusElement) {
+        statusElement.textContent = state.status;
+      }
+      if (errorElement) {
+        errorElement.textContent = (_b = state.error) != null ? _b : "";
+        errorElement.hidden = !state.error;
+      }
+    };
+    playButton == null ? void 0 : playButton.addEventListener("click", () => {
+      var _a;
+      (_a = window.ZydkaPlayer) == null ? void 0 : _a.play(testTrack);
+      refreshState();
+    });
+    pauseButton == null ? void 0 : pauseButton.addEventListener("click", () => {
+      var _a;
+      (_a = window.ZydkaPlayer) == null ? void 0 : _a.pause();
+      refreshState();
+    });
+    refreshState();
+    window.setInterval(refreshState, 500);
+  }
   function bootstrap() {
     const root = document.getElementById("zydka-player-root");
     if (!root) return;
@@ -2551,6 +2600,7 @@
         return { currentTrack, status, isPlaying, error };
       }
     };
+    renderTestPlayer(root);
     console.log("[Zydka Player] Bridge initialized - window.ZydkaPlayer ready.");
   }
   document.addEventListener("DOMContentLoaded", bootstrap);

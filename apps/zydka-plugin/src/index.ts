@@ -30,6 +30,13 @@ interface ZydkaPlayerAPI {
   state: () => ZydkaPlayerState;
 }
 
+const testTrack: ZydkaTrackInput = {
+  id: 'demo-track',
+  title: 'Demo Track',
+  artist: 'Atelier Zydka',
+  src: 'https://www.louis94.com/wp-content/uploads/2026/06/04.-New-York-Shit-feat.-Swizz-Beatz.mp3',
+};
+
 declare global {
   interface Window {
     ZydkaPlayer: ZydkaPlayerAPI | undefined;
@@ -56,6 +63,55 @@ function normalizeTrack(track: ZydkaTrackInput): ZydkaTrack | null {
   };
 }
 
+function renderTestPlayer(root: HTMLElement): void {
+  root.innerHTML = `
+    <div class="zydka-player-card">
+      <p class="zydka-player-eyebrow">Zydka Player</p>
+      <h2 class="zydka-player-title">${testTrack.title}</h2>
+      <p class="zydka-player-artist">${testTrack.artist}</p>
+      <div class="zydka-player-actions">
+        <button class="zydka-player-button" type="button" data-zydka-action="play">Play</button>
+        <button class="zydka-player-button zydka-player-button-secondary" type="button" data-zydka-action="pause">Pause</button>
+      </div>
+      <p class="zydka-player-status">Status: <span data-zydka-status>idle</span></p>
+      <p class="zydka-player-error" data-zydka-error hidden></p>
+    </div>
+  `;
+
+  const statusElement = root.querySelector<HTMLElement>('[data-zydka-status]');
+  const errorElement = root.querySelector<HTMLElement>('[data-zydka-error]');
+  const playButton = root.querySelector<HTMLButtonElement>('[data-zydka-action="play"]');
+  const pauseButton = root.querySelector<HTMLButtonElement>('[data-zydka-action="pause"]');
+
+  const refreshState = (): void => {
+    const state = window.ZydkaPlayer?.state();
+
+    if (!state) return;
+
+    if (statusElement) {
+      statusElement.textContent = state.status;
+    }
+
+    if (errorElement) {
+      errorElement.textContent = state.error ?? '';
+      errorElement.hidden = !state.error;
+    }
+  };
+
+  playButton?.addEventListener('click', () => {
+    window.ZydkaPlayer?.play(testTrack);
+    refreshState();
+  });
+
+  pauseButton?.addEventListener('click', () => {
+    window.ZydkaPlayer?.pause();
+    refreshState();
+  });
+
+  refreshState();
+  window.setInterval(refreshState, 500);
+}
+
 function bootstrap(): void {
   const root = document.getElementById('zydka-player-root');
   // Ne rien faire si le shortcode [zydka_player] n'est pas present dans la page.
@@ -75,6 +131,9 @@ function bootstrap(): void {
       return { currentTrack, status, isPlaying, error };
     },
   };
+
+  renderTestPlayer(root);
+
   console.log('[Zydka Player] Bridge initialized - window.ZydkaPlayer ready.');
 }
 

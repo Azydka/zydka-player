@@ -1,9 +1,99 @@
-/* Zydka Player — styles de base
- * Ce fichier est un placeholder. Les styles définitifs seront ajoutés
- * lors de l'intégration du composant lecteur.
- */
+/* Zydka Player - styles de test minimaux */
 
 .zydka-player-root {
   display: block;
   width: 100%;
+}
+
+.zydka-player-card {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 520px;
+  margin: 24px 0;
+  padding: 20px;
+  border: 1px solid #d7d7d7;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #151515;
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+.zydka-player-eyebrow,
+.zydka-player-title,
+.zydka-player-artist,
+.zydka-player-status,
+.zydka-player-error {
+  margin: 0;
+}
+
+.zydka-player-eyebrow {
+  color: #5c5c5c;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.zydka-player-title {
+  margin-top: 8px;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.zydka-player-artist {
+  margin-top: 4px;
+  color: #4b4b4b;
+  font-size: 15px;
+}
+
+.zydka-player-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.zydka-player-button {
+  min-width: 88px;
+  min-height: 40px;
+  padding: 8px 16px;
+  border: 1px solid #151515;
+  border-radius: 6px;
+  background: #151515;
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+.zydka-player-button:hover,
+.zydka-player-button:focus {
+  background: #333333;
+}
+
+.zydka-player-button-secondary {
+  background: #ffffff;
+  color: #151515;
+}
+
+.zydka-player-button-secondary:hover,
+.zydka-player-button-secondary:focus {
+  background: #f1f1f1;
+}
+
+.zydka-player-status {
+  margin-top: 16px;
+  color: #333333;
+  font-size: 14px;
+}
+
+.zydka-player-error {
+  margin-top: 8px;
+  color: #a40000;
+  font-size: 14px;
 }

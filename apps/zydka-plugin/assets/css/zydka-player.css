@@ -41,6 +41,39 @@
   min-width: 0;
 }
 
+.zydka-player-header-aside {
+  display: grid;
+  gap: 10px;
+  justify-items: end;
+  flex: 0 0 auto;
+}
+
+.zydka-player-cover {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 92px;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 1px solid #d7d7d7;
+  border-radius: 8px;
+  background: linear-gradient(145deg, #111111, #3a3a3a);
+  color: #ffffff;
+}
+
+.zydka-player-cover-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.zydka-player-cover-fallback {
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1;
+}
+
 .zydka-player-eyebrow,
 .zydka-player-title,
 .zydka-player-artist,
@@ -282,7 +315,7 @@
 
 .zydka-player-queue-item {
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr);
+  grid-template-columns: 42px 34px minmax(0, 1fr);
   gap: 10px;
   width: 100%;
   min-height: 58px;
@@ -306,6 +339,32 @@
   color: #ffffff;
 }
 
+.zydka-player-queue-thumb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 1px solid #dedede;
+  border-radius: 6px;
+  background: linear-gradient(145deg, #111111, #3a3a3a);
+  color: #ffffff;
+}
+
+.zydka-player-queue-thumb-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.zydka-player-queue-thumb-fallback {
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+}
+
 .zydka-player-queue-number {
   color: #777777;
   font-size: 12px;
@@ -316,6 +375,10 @@
 
 .zydka-player-queue-item.is-active .zydka-player-queue-number {
   color: #d8d8d8;
+}
+
+.zydka-player-queue-item.is-active .zydka-player-queue-thumb {
+  border-color: #ffffff;
 }
 
 .zydka-player-queue-meta {
@@ -410,6 +473,18 @@
     display: block;
   }
 
+  .zydka-player-header-aside {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 14px;
+  }
+
+  .zydka-player-cover {
+    width: 72px;
+  }
+
   .zydka-player-counter,
   .zydka-player-status,
   .zydka-player-error {
@@ -461,6 +536,11 @@
   }
 
   .zydka-player-queue-item {
+    grid-template-columns: 44px 30px minmax(0, 1fr);
     min-height: 62px;
+  }
+
+  .zydka-player-queue-thumb {
+    width: 44px;
   }
 }

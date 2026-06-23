@@ -3,6 +3,7 @@ export interface AudioTrack {
   audioUrl: string;
   title?: string;
   artist?: string;
+  cover?: string;
   duration?: number;
 }
 

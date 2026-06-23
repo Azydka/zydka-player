@@ -40,14 +40,18 @@ function zydka_player_enqueue_assets(): void {
 }
 add_action( 'wp_enqueue_scripts', 'zydka_player_enqueue_assets' );
 
+/**
+ * Génère le conteneur HTML du player et injecte les données track/playlist.
+ */
 function zydka_player_render_container( array $attrs = [], array $tracks = [] ): string {
     $data_attributes = sprintf(
-        'data-source="%s" data-track-id="%s" data-title="%s" data-artist="%s" data-src="%s"',
+        'data-source="%s" data-track-id="%s" data-title="%s" data-artist="%s" data-src="%s" data-cover="%s"',
         esc_attr( $attrs['source'] ?? 'shortcode' ),
         esc_attr( $attrs['id'] ?? 'demo-track' ),
         esc_attr( $attrs['title'] ?? 'Demo Track' ),
         esc_attr( $attrs['artist'] ?? 'Atelier Zydka' ),
-        esc_attr( esc_url( $attrs['src'] ?? '' ) )
+        esc_url( $attrs['src'] ?? '' ),
+        esc_url( $attrs['cover'] ?? '' )
     );
 
     if ( ! empty( $tracks ) ) {
@@ -63,7 +67,6 @@ function zydka_player_render_container( array $attrs = [], array $tracks = [] ):
     );
 }
 
-
 /**
  * Shortcode [zydka_player].
  * Retourne le conteneur HTML dans lequel le lecteur JS sera monté.
@@ -75,15 +78,25 @@ function zydka_player_shortcode( $atts = [] ): string {
             'title'  => 'Demo Track',
             'artist' => 'Atelier Zydka',
             'src'    => '',
+            'cover'  => '',
         ],
         is_array( $atts ) ? $atts : [],
         'zydka_player'
     );
 
+    $atts['id']     = sanitize_text_field( $atts['id'] );
+    $atts['title']  = sanitize_text_field( $atts['title'] );
+    $atts['artist'] = sanitize_text_field( $atts['artist'] );
+    $atts['src']    = esc_url_raw( $atts['src'] );
+    $atts['cover']  = esc_url_raw( $atts['cover'] );
+
     return zydka_player_render_container( $atts );
 }
 add_shortcode( 'zydka_player', 'zydka_player_shortcode' );
 
+/**
+ * Shortcode parent [zydka_playlist].
+ */
 function zydka_playlist_shortcode( $atts = [], $content = null ): string {
     global $zydka_playlist_tracks;
 
@@ -102,6 +115,7 @@ function zydka_playlist_shortcode( $atts = [], $content = null ): string {
         'title'  => 'Demo Track',
         'artist' => 'Atelier Zydka',
         'src'    => '',
+        'cover'  => '',
     ];
 
     $first_track['source'] = 'playlist';
@@ -110,6 +124,9 @@ function zydka_playlist_shortcode( $atts = [], $content = null ): string {
 }
 add_shortcode( 'zydka_playlist', 'zydka_playlist_shortcode' );
 
+/**
+ * Shortcode enfant [zydka_track].
+ */
 function zydka_track_shortcode( $atts = [] ): string {
     global $zydka_playlist_tracks;
 
@@ -123,6 +140,7 @@ function zydka_track_shortcode( $atts = [] ): string {
             'title'  => '',
             'artist' => '',
             'src'    => '',
+            'cover'  => '',
         ],
         is_array( $atts ) ? $atts : [],
         'zydka_track'
@@ -139,6 +157,7 @@ function zydka_track_shortcode( $atts = [] ): string {
         'title'  => sanitize_text_field( $atts['title'] ),
         'artist' => sanitize_text_field( $atts['artist'] ),
         'src'    => $src,
+        'cover'  => esc_url_raw( $atts['cover'] ),
     ];
 
     return '';

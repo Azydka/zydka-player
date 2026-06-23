@@ -2808,6 +2808,7 @@
       audioUrl,
       title: track.title,
       artist: track.artist,
+      cover: track.cover,
       duration: track.duration
     };
   }
@@ -2825,7 +2826,8 @@
       id: root.dataset.trackId || fallbackTrack.id,
       title: root.dataset.title || fallbackTrack.title,
       artist: root.dataset.artist || fallbackTrack.artist,
-      src: root.dataset.src || fallbackTrack.src
+      src: root.dataset.src || fallbackTrack.src,
+      cover: root.dataset.cover || fallbackTrack.cover
     };
   }
   function readQueueFromRoot(root, fallbackSingleTrack) {
@@ -2844,6 +2846,10 @@
   }
   function renderText(value) {
     return String(value != null ? value : "");
+  }
+  function getCoverLabel(track) {
+    const label = (track == null ? void 0 : track.title) || (track == null ? void 0 : track.artist) || "Z";
+    return String(label).trim().charAt(0).toUpperCase() || "Z";
   }
   function formatTime(seconds) {
     if (!Number.isFinite(seconds) || seconds <= 0) return "0:00";
@@ -2869,9 +2875,22 @@
     const artist = document.createElement("p");
     artist.className = "zydka-player-artist";
     artist.textContent = renderText(fallbackDisplayTrack.artist);
+    const cover = document.createElement("div");
+    cover.className = "zydka-player-cover";
+    const coverImage = document.createElement("img");
+    coverImage.className = "zydka-player-cover-image";
+    coverImage.alt = "";
+    coverImage.hidden = true;
+    const coverFallback = document.createElement("span");
+    coverFallback.className = "zydka-player-cover-fallback";
+    coverFallback.textContent = getCoverLabel(fallbackDisplayTrack);
+    cover.append(coverImage, coverFallback);
+    const headerAside = document.createElement("div");
+    headerAside.className = "zydka-player-header-aside";
     const trackCounter = document.createElement("p");
     trackCounter.className = "zydka-player-counter";
     trackCounter.textContent = "Track 1 / 1";
+    headerAside.append(cover, trackCounter);
     const status = document.createElement("p");
     status.className = "zydka-player-status";
     status.append("Status: ");
@@ -2879,7 +2898,7 @@
     statusValue.textContent = "idle";
     status.append(statusValue);
     textBlock.append(eyebrow, title, artist);
-    header.append(textBlock, trackCounter);
+    header.append(textBlock, headerAside);
     const actions = document.createElement("div");
     actions.className = "zydka-player-actions";
     const previousButton = document.createElement("button");
@@ -2970,6 +2989,7 @@
     footer.append(status, error);
     card.append(header, actions, timeline, volumeControl, footer, queuePanel);
     root.append(card);
+    const failedCoverUrls = /* @__PURE__ */ new Set();
     const setQueuePanelOpen = (isOpen) => {
       queuePanel.hidden = !isOpen;
       queuePanel.classList.toggle("is-open", isOpen);
@@ -2992,6 +3012,31 @@
         item.type = "button";
         item.setAttribute("role", "listitem");
         item.setAttribute("aria-current", isActive ? "true" : "false");
+        const thumb = document.createElement("span");
+        thumb.className = "zydka-player-queue-thumb";
+        const thumbImage = document.createElement("img");
+        thumbImage.className = "zydka-player-queue-thumb-image";
+        thumbImage.alt = "";
+        thumbImage.hidden = true;
+        const thumbFallback = document.createElement("span");
+        thumbFallback.className = "zydka-player-queue-thumb-fallback";
+        thumbFallback.textContent = getCoverLabel(track);
+        if (track.cover && !failedCoverUrls.has(track.cover)) {
+          thumbImage.src = track.cover;
+          thumbImage.dataset.coverSrc = track.cover;
+          thumbImage.hidden = false;
+          thumbFallback.hidden = true;
+        }
+        thumbImage.addEventListener("error", () => {
+          const failedCover = thumbImage.dataset.coverSrc;
+          if (failedCover) {
+            failedCoverUrls.add(failedCover);
+          }
+          thumbImage.removeAttribute("src");
+          thumbImage.hidden = true;
+          thumbFallback.hidden = false;
+        });
+        thumb.append(thumbImage, thumbFallback);
         const number = document.createElement("span");
         number.className = "zydka-player-queue-number";
         number.textContent = String(index + 1).padStart(2, "0");
@@ -3004,7 +3049,7 @@
         itemArtist.className = "zydka-player-queue-track-artist";
         itemArtist.textContent = renderText(track.artist || "");
         meta.append(itemTitle, itemArtist);
-        item.append(number, meta);
+        item.append(thumb, number, meta);
         item.addEventListener("click", () => {
           var _a;
           (_a = window.ZydkaPlayer) == null ? void 0 : _a.playAt(index);
@@ -3029,6 +3074,17 @@
       card.className = `zydka-player-card zydka-player-state-${state.status}`;
       title.textContent = renderText((_p = displayTrack == null ? void 0 : displayTrack.title) != null ? _p : fallbackDisplayTrack.title);
       artist.textContent = renderText((_q = displayTrack == null ? void 0 : displayTrack.artist) != null ? _q : fallbackDisplayTrack.artist);
+      coverFallback.textContent = getCoverLabel(displayTrack != null ? displayTrack : fallbackDisplayTrack);
+      if ((displayTrack == null ? void 0 : displayTrack.cover) && !failedCoverUrls.has(displayTrack.cover)) {
+        coverImage.src = displayTrack.cover;
+        coverImage.dataset.coverSrc = displayTrack.cover;
+        coverImage.hidden = false;
+        coverFallback.hidden = true;
+      } else {
+        coverImage.removeAttribute("src");
+        coverImage.hidden = true;
+        coverFallback.hidden = false;
+      }
       trackCounter.textContent = `Track ${displayIndex} / ${queue.length}`;
       previousButton.disabled = currentIndex <= 0;
       nextButton.disabled = currentIndex >= queue.length - 1;
@@ -3047,6 +3103,15 @@
       error.textContent = (_r = state.error) != null ? _r : "";
       error.hidden = !state.error;
     };
+    coverImage.addEventListener("error", () => {
+      const failedCover = coverImage.dataset.coverSrc;
+      if (failedCover) {
+        failedCoverUrls.add(failedCover);
+      }
+      coverImage.removeAttribute("src");
+      coverImage.hidden = true;
+      coverFallback.hidden = false;
+    });
     previousButton.addEventListener("click", () => {
       var _a;
       (_a = window.ZydkaPlayer) == null ? void 0 : _a.previous();

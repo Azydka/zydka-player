@@ -97,15 +97,22 @@ function readTrackFromRoot(root: HTMLElement): ZydkaTrackInput {
   };
 }
 
-function buildTestQueue(track: ZydkaTrackInput): ZydkaTrackInput[] {
-  return [
-    track,
-    {
-      ...track,
-      id: `${track.id}-test-2`,
-      title: `${renderText(track.title)} (Test 2)`,
-    },
-  ];
+function readQueueFromRoot(root: HTMLElement, fallbackSingleTrack: ZydkaTrackInput): ZydkaTrackInput[] {
+  if (!root.dataset.tracks) {
+    return [fallbackSingleTrack];
+  }
+
+  try {
+    const parsedTracks = JSON.parse(root.dataset.tracks) as ZydkaTrackInput[];
+
+    if (Array.isArray(parsedTracks) && parsedTracks.length > 0) {
+      return parsedTracks;
+    }
+  } catch (error) {
+    console.error('[Zydka Player] Cannot parse playlist tracks.', error);
+  }
+
+  return [fallbackSingleTrack];
 }
 
 function renderText(value: string | number | undefined): string {
@@ -303,8 +310,10 @@ function bootstrap(): void {
     },
   };
 
-  window.ZydkaPlayer.setQueue(buildTestQueue(shortcodeTrack));
-  renderTestPlayer(root, shortcodeTrack);
+  const shortcodeQueue = readQueueFromRoot(root, shortcodeTrack);
+
+  window.ZydkaPlayer.setQueue(shortcodeQueue);
+  renderTestPlayer(root, shortcodeQueue[0] ?? shortcodeTrack);
 
   console.log('[Zydka Player] Bridge initialized - window.ZydkaPlayer ready.');
 }

@@ -2723,14 +2723,19 @@
       src: root.dataset.src || fallbackTrack.src
     };
   }
-  function buildTestQueue(track) {
-    return [
-      track,
-      __spreadProps(__spreadValues({}, track), {
-        id: `${track.id}-test-2`,
-        title: `${renderText(track.title)} (Test 2)`
-      })
-    ];
+  function readQueueFromRoot(root, fallbackSingleTrack) {
+    if (!root.dataset.tracks) {
+      return [fallbackSingleTrack];
+    }
+    try {
+      const parsedTracks = JSON.parse(root.dataset.tracks);
+      if (Array.isArray(parsedTracks) && parsedTracks.length > 0) {
+        return parsedTracks;
+      }
+    } catch (error) {
+      console.error("[Zydka Player] Cannot parse playlist tracks.", error);
+    }
+    return [fallbackSingleTrack];
   }
   function renderText(value) {
     return String(value != null ? value : "");
@@ -2866,6 +2871,7 @@
     window.setInterval(refreshState, 250);
   }
   function bootstrap() {
+    var _a;
     const root = document.getElementById("zydka-player-root");
     if (!root) return;
     const shortcodeTrack = readTrackFromRoot(root);
@@ -2890,8 +2896,9 @@
         return { currentTrack, currentIndex, queue, status, isPlaying, position, duration, error };
       }
     };
-    window.ZydkaPlayer.setQueue(buildTestQueue(shortcodeTrack));
-    renderTestPlayer(root, shortcodeTrack);
+    const shortcodeQueue = readQueueFromRoot(root, shortcodeTrack);
+    window.ZydkaPlayer.setQueue(shortcodeQueue);
+    renderTestPlayer(root, (_a = shortcodeQueue[0]) != null ? _a : shortcodeTrack);
     console.log("[Zydka Player] Bridge initialized - window.ZydkaPlayer ready.");
   }
   document.addEventListener("DOMContentLoaded", bootstrap);

@@ -147,6 +147,28 @@ Exemple validé :
 [/zydka_playlist]
 ```
 
+### 23/06/2026 - louis94.com - Covers embarquées MP3
+
+Validation production réussie après installation du ZIP généré.
+
+Branche : `feature/zydka-player-embedded-cover`  
+Commit fonctionnel : `875d48e feat(zydka-plugin): extract embedded audio covers`
+
+Résultat :
+
+- Cover explicite via shortcode OK.
+- Cover principale affichée.
+- Mini-covers dans Queue OK.
+- Extraction automatique de cover embarquée MP3 ID3/APIC OK.
+- Fallback propre si aucune cover ou format non supporté.
+- M4A/MP4 `covr` non supporté à ce stade.
+- Play/Pause OK.
+- Previous/Next OK.
+- Queue OK.
+- Progression/seek OK.
+- Volume/mute OK.
+- Mobile à vérifier/OK selon test.
+
 ## Contraintes
 
 - Plugin autonome, sans dépendance à un thème WordPress.

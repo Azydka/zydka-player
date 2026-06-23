@@ -30,7 +30,7 @@ interface ZydkaPlayerAPI {
   state: () => ZydkaPlayerState;
 }
 
-const testTrack: ZydkaTrackInput = {
+const fallbackTrack: ZydkaTrackInput = {
   id: 'demo-track',
   title: 'Demo Track',
   artist: 'Atelier Zydka',
@@ -63,47 +63,82 @@ function normalizeTrack(track: ZydkaTrackInput): ZydkaTrack | null {
   };
 }
 
-function renderTestPlayer(root: HTMLElement): void {
-  root.innerHTML = `
-    <div class="zydka-player-card">
-      <p class="zydka-player-eyebrow">Zydka Player</p>
-      <h2 class="zydka-player-title">${testTrack.title}</h2>
-      <p class="zydka-player-artist">${testTrack.artist}</p>
-      <div class="zydka-player-actions">
-        <button class="zydka-player-button" type="button" data-zydka-action="play">Play</button>
-        <button class="zydka-player-button zydka-player-button-secondary" type="button" data-zydka-action="pause">Pause</button>
-      </div>
-      <p class="zydka-player-status">Status: <span data-zydka-status>idle</span></p>
-      <p class="zydka-player-error" data-zydka-error hidden></p>
-    </div>
-  `;
+function readTrackFromRoot(root: HTMLElement): ZydkaTrackInput {
+  return {
+    id: root.dataset.trackId || fallbackTrack.id,
+    title: root.dataset.title || fallbackTrack.title,
+    artist: root.dataset.artist || fallbackTrack.artist,
+    src: root.dataset.src || fallbackTrack.src,
+  };
+}
 
-  const statusElement = root.querySelector<HTMLElement>('[data-zydka-status]');
-  const errorElement = root.querySelector<HTMLElement>('[data-zydka-error]');
-  const playButton = root.querySelector<HTMLButtonElement>('[data-zydka-action="play"]');
-  const pauseButton = root.querySelector<HTMLButtonElement>('[data-zydka-action="pause"]');
+function renderText(value: string | number | undefined): string {
+  return String(value ?? '');
+}
+
+function renderTestPlayer(root: HTMLElement, track: ZydkaTrackInput): void {
+  root.innerHTML = '';
+
+  const card = document.createElement('div');
+  card.className = 'zydka-player-card';
+
+  const eyebrow = document.createElement('p');
+  eyebrow.className = 'zydka-player-eyebrow';
+  eyebrow.textContent = 'Zydka Player';
+
+  const title = document.createElement('h2');
+  title.className = 'zydka-player-title';
+  title.textContent = renderText(track.title);
+
+  const artist = document.createElement('p');
+  artist.className = 'zydka-player-artist';
+  artist.textContent = renderText(track.artist);
+
+  const actions = document.createElement('div');
+  actions.className = 'zydka-player-actions';
+
+  const playButton = document.createElement('button');
+  playButton.className = 'zydka-player-button';
+  playButton.type = 'button';
+  playButton.textContent = 'Play';
+
+  const pauseButton = document.createElement('button');
+  pauseButton.className = 'zydka-player-button zydka-player-button-secondary';
+  pauseButton.type = 'button';
+  pauseButton.textContent = 'Pause';
+
+  const status = document.createElement('p');
+  status.className = 'zydka-player-status';
+  status.append('Status: ');
+
+  const statusValue = document.createElement('span');
+  statusValue.textContent = 'idle';
+  status.append(statusValue);
+
+  const error = document.createElement('p');
+  error.className = 'zydka-player-error';
+  error.hidden = true;
+
+  actions.append(playButton, pauseButton);
+  card.append(eyebrow, title, artist, actions, status, error);
+  root.append(card);
 
   const refreshState = (): void => {
     const state = window.ZydkaPlayer?.state();
 
     if (!state) return;
 
-    if (statusElement) {
-      statusElement.textContent = state.status;
-    }
-
-    if (errorElement) {
-      errorElement.textContent = state.error ?? '';
-      errorElement.hidden = !state.error;
-    }
+    statusValue.textContent = state.status;
+    error.textContent = state.error ?? '';
+    error.hidden = !state.error;
   };
 
-  playButton?.addEventListener('click', () => {
-    window.ZydkaPlayer?.play(testTrack);
+  playButton.addEventListener('click', () => {
+    window.ZydkaPlayer?.play(track);
     refreshState();
   });
 
-  pauseButton?.addEventListener('click', () => {
+  pauseButton.addEventListener('click', () => {
     window.ZydkaPlayer?.pause();
     refreshState();
   });
@@ -116,6 +151,8 @@ function bootstrap(): void {
   const root = document.getElementById('zydka-player-root');
   // Ne rien faire si le shortcode [zydka_player] n'est pas present dans la page.
   if (!root) return;
+
+  const shortcodeTrack = readTrackFromRoot(root);
 
   window.ZydkaPlayer = {
     play: (track: ZydkaTrackInput) => {
@@ -132,7 +169,7 @@ function bootstrap(): void {
     },
   };
 
-  renderTestPlayer(root);
+  renderTestPlayer(root, shortcodeTrack);
 
   console.log('[Zydka Player] Bridge initialized - window.ZydkaPlayer ready.');
 }

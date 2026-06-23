@@ -2518,7 +2518,7 @@
   };
 
   // src/index.ts
-  var testTrack = {
+  var fallbackTrack = {
     id: "demo-track",
     title: "Demo Track",
     artist: "Atelier Zydka",
@@ -2542,42 +2542,66 @@
       duration: track.duration
     };
   }
-  function renderTestPlayer(root) {
-    root.innerHTML = `
-    <div class="zydka-player-card">
-      <p class="zydka-player-eyebrow">Zydka Player</p>
-      <h2 class="zydka-player-title">${testTrack.title}</h2>
-      <p class="zydka-player-artist">${testTrack.artist}</p>
-      <div class="zydka-player-actions">
-        <button class="zydka-player-button" type="button" data-zydka-action="play">Play</button>
-        <button class="zydka-player-button zydka-player-button-secondary" type="button" data-zydka-action="pause">Pause</button>
-      </div>
-      <p class="zydka-player-status">Status: <span data-zydka-status>idle</span></p>
-      <p class="zydka-player-error" data-zydka-error hidden></p>
-    </div>
-  `;
-    const statusElement = root.querySelector("[data-zydka-status]");
-    const errorElement = root.querySelector("[data-zydka-error]");
-    const playButton = root.querySelector('[data-zydka-action="play"]');
-    const pauseButton = root.querySelector('[data-zydka-action="pause"]');
+  function readTrackFromRoot(root) {
+    return {
+      id: root.dataset.trackId || fallbackTrack.id,
+      title: root.dataset.title || fallbackTrack.title,
+      artist: root.dataset.artist || fallbackTrack.artist,
+      src: root.dataset.src || fallbackTrack.src
+    };
+  }
+  function renderText(value) {
+    return String(value != null ? value : "");
+  }
+  function renderTestPlayer(root, track) {
+    root.innerHTML = "";
+    const card = document.createElement("div");
+    card.className = "zydka-player-card";
+    const eyebrow = document.createElement("p");
+    eyebrow.className = "zydka-player-eyebrow";
+    eyebrow.textContent = "Zydka Player";
+    const title = document.createElement("h2");
+    title.className = "zydka-player-title";
+    title.textContent = renderText(track.title);
+    const artist = document.createElement("p");
+    artist.className = "zydka-player-artist";
+    artist.textContent = renderText(track.artist);
+    const actions = document.createElement("div");
+    actions.className = "zydka-player-actions";
+    const playButton = document.createElement("button");
+    playButton.className = "zydka-player-button";
+    playButton.type = "button";
+    playButton.textContent = "Play";
+    const pauseButton = document.createElement("button");
+    pauseButton.className = "zydka-player-button zydka-player-button-secondary";
+    pauseButton.type = "button";
+    pauseButton.textContent = "Pause";
+    const status = document.createElement("p");
+    status.className = "zydka-player-status";
+    status.append("Status: ");
+    const statusValue = document.createElement("span");
+    statusValue.textContent = "idle";
+    status.append(statusValue);
+    const error = document.createElement("p");
+    error.className = "zydka-player-error";
+    error.hidden = true;
+    actions.append(playButton, pauseButton);
+    card.append(eyebrow, title, artist, actions, status, error);
+    root.append(card);
     const refreshState = () => {
       var _a, _b;
       const state = (_a = window.ZydkaPlayer) == null ? void 0 : _a.state();
       if (!state) return;
-      if (statusElement) {
-        statusElement.textContent = state.status;
-      }
-      if (errorElement) {
-        errorElement.textContent = (_b = state.error) != null ? _b : "";
-        errorElement.hidden = !state.error;
-      }
+      statusValue.textContent = state.status;
+      error.textContent = (_b = state.error) != null ? _b : "";
+      error.hidden = !state.error;
     };
-    playButton == null ? void 0 : playButton.addEventListener("click", () => {
+    playButton.addEventListener("click", () => {
       var _a;
-      (_a = window.ZydkaPlayer) == null ? void 0 : _a.play(testTrack);
+      (_a = window.ZydkaPlayer) == null ? void 0 : _a.play(track);
       refreshState();
     });
-    pauseButton == null ? void 0 : pauseButton.addEventListener("click", () => {
+    pauseButton.addEventListener("click", () => {
       var _a;
       (_a = window.ZydkaPlayer) == null ? void 0 : _a.pause();
       refreshState();
@@ -2588,6 +2612,7 @@
   function bootstrap() {
     const root = document.getElementById("zydka-player-root");
     if (!root) return;
+    const shortcodeTrack = readTrackFromRoot(root);
     window.ZydkaPlayer = {
       play: (track) => {
         const normalizedTrack = normalizeTrack(track);
@@ -2600,7 +2625,7 @@
         return { currentTrack, status, isPlaying, error };
       }
     };
-    renderTestPlayer(root);
+    renderTestPlayer(root, shortcodeTrack);
     console.log("[Zydka Player] Bridge initialized - window.ZydkaPlayer ready.");
   }
   document.addEventListener("DOMContentLoaded", bootstrap);

@@ -44,7 +44,24 @@ add_action( 'wp_enqueue_scripts', 'zydka_player_enqueue_assets' );
  * Shortcode [zydka_player].
  * Retourne le conteneur HTML dans lequel le lecteur JS sera monté.
  */
-function zydka_player_shortcode(): string {
-    return '<div id="zydka-player-root" class="zydka-player-root" data-source="shortcode"></div>';
+function zydka_player_shortcode( $atts = [] ): string {
+    $atts = shortcode_atts(
+        [
+            'id'     => 'demo-track',
+            'title'  => 'Demo Track',
+            'artist' => 'Atelier Zydka',
+            'src'    => '',
+        ],
+        is_array( $atts ) ? $atts : [],
+        'zydka_player'
+    );
+
+    return sprintf(
+        '<div id="zydka-player-root" class="zydka-player-root" data-source="shortcode" data-track-id="%s" data-title="%s" data-artist="%s" data-src="%s"></div>',
+        esc_attr( $atts['id'] ),
+        esc_attr( $atts['title'] ),
+        esc_attr( $atts['artist'] ),
+        esc_attr( esc_url( $atts['src'] ) )
+    );
 }
 add_shortcode( 'zydka_player', 'zydka_player_shortcode' );

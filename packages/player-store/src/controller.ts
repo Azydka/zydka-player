@@ -6,6 +6,30 @@ export const PlayerController = {
     usePlayerStore.getState().setCurrentTrack(track);
   },
 
+  setQueue(tracks: ITrack[]) {
+    usePlayerStore.getState().setQueue(tracks);
+  },
+
+  getQueue() {
+    return usePlayerStore.getState().getQueue();
+  },
+
+  getCurrentIndex() {
+    return usePlayerStore.getState().getCurrentIndex();
+  },
+
+  playAt(index: number) {
+    return usePlayerStore.getState().playAt(index);
+  },
+
+  next() {
+    return usePlayerStore.getState().next();
+  },
+
+  previous() {
+    return usePlayerStore.getState().previous();
+  },
+
   play() {
     usePlayerStore.getState().play();
   },

@@ -2452,6 +2452,10 @@
       duration: audioEngine.getDuration()
     });
   }
+  function findTrackIndex(queue, track) {
+    if (!track) return -1;
+    return queue.findIndex((queuedTrack) => queuedTrack.id === track.id);
+  }
   audioEngine.on("loaded", ({ duration }) => {
     usePlayerStore.setState({
       status: "ready",
@@ -2500,6 +2504,8 @@
   });
   var usePlayerStore = createStore((set, get) => ({
     currentTrack: null,
+    currentIndex: -1,
+    queue: [],
     status: "idle",
     isPlaying: false,
     position: 0,
@@ -2509,6 +2515,7 @@
       if (!track) {
         set({
           currentTrack: null,
+          currentIndex: -1,
           status: "idle",
           isPlaying: false,
           position: 0,
@@ -2517,8 +2524,34 @@
         });
         return;
       }
+      set((state) => ({
+        currentTrack: track,
+        currentIndex: findTrackIndex(state.queue, track),
+        status: "loading",
+        isPlaying: false,
+        position: 0,
+        duration: 0,
+        error: null
+      }));
+      audioEngine.loadTrack(track);
+    },
+    setQueue: (tracks) => {
+      set((state) => {
+        const currentIndex = findTrackIndex(tracks, state.currentTrack);
+        return {
+          queue: tracks,
+          currentIndex: currentIndex >= 0 ? currentIndex : tracks.length > 0 ? 0 : -1
+        };
+      });
+    },
+    getQueue: () => get().queue,
+    getCurrentIndex: () => get().currentIndex,
+    playAt: (index) => {
+      const track = get().queue[index];
+      if (!track) return false;
       set({
         currentTrack: track,
+        currentIndex: index,
         status: "loading",
         isPlaying: false,
         position: 0,
@@ -2526,6 +2559,21 @@
         error: null
       });
       audioEngine.loadTrack(track);
+      audioEngine.play();
+      syncTimeline();
+      return true;
+    },
+    next: () => {
+      const { currentIndex, queue, playAt } = get();
+      if (queue.length === 0) return false;
+      if (currentIndex >= queue.length - 1) return false;
+      return playAt(currentIndex < 0 ? 0 : currentIndex + 1);
+    },
+    previous: () => {
+      const { currentIndex, queue, playAt } = get();
+      if (queue.length === 0) return false;
+      if (currentIndex <= 0) return false;
+      return playAt(currentIndex - 1);
     },
     play: () => {
       if (!get().currentTrack) return;
@@ -2549,6 +2597,24 @@
   var PlayerController = {
     load(track) {
       usePlayerStore.getState().setCurrentTrack(track);
+    },
+    setQueue(tracks) {
+      usePlayerStore.getState().setQueue(tracks);
+    },
+    getQueue() {
+      return usePlayerStore.getState().getQueue();
+    },
+    getCurrentIndex() {
+      return usePlayerStore.getState().getCurrentIndex();
+    },
+    playAt(index) {
+      return usePlayerStore.getState().playAt(index);
+    },
+    next() {
+      return usePlayerStore.getState().next();
+    },
+    previous() {
+      return usePlayerStore.getState().previous();
     },
     play() {
       usePlayerStore.getState().play();
@@ -2579,6 +2645,24 @@
     static play(track) {
       PlayerController.load(track);
       PlayerController.play();
+    }
+    static setQueue(tracks) {
+      PlayerController.setQueue(tracks);
+    }
+    static getQueue() {
+      return PlayerController.getQueue();
+    }
+    static getCurrentIndex() {
+      return PlayerController.getCurrentIndex();
+    }
+    static playAt(index) {
+      return PlayerController.playAt(index);
+    }
+    static next() {
+      return PlayerController.next();
+    }
+    static previous() {
+      return PlayerController.previous();
     }
     static pause() {
       PlayerController.pause();
@@ -2622,6 +2706,15 @@
       duration: track.duration
     };
   }
+  function normalizeQueue(tracks) {
+    return tracks.reduce((queue, track) => {
+      const normalizedTrack = normalizeTrack(track);
+      if (normalizedTrack) {
+        queue.push(normalizedTrack);
+      }
+      return queue;
+    }, []);
+  }
   function readTrackFromRoot(root) {
     return {
       id: root.dataset.trackId || fallbackTrack.id,
@@ -2629,6 +2722,15 @@
       artist: root.dataset.artist || fallbackTrack.artist,
       src: root.dataset.src || fallbackTrack.src
     };
+  }
+  function buildTestQueue(track) {
+    return [
+      track,
+      __spreadProps(__spreadValues({}, track), {
+        id: `${track.id}-test-2`,
+        title: `${renderText(track.title)} (Test 2)`
+      })
+    ];
   }
   function renderText(value) {
     return String(value != null ? value : "");
@@ -2640,7 +2742,7 @@
     const remainingSeconds = totalSeconds % 60;
     return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
   }
-  function renderTestPlayer(root, track) {
+  function renderTestPlayer(root, fallbackDisplayTrack) {
     root.innerHTML = "";
     const card = document.createElement("div");
     card.className = "zydka-player-card";
@@ -2649,12 +2751,16 @@
     eyebrow.textContent = "Zydka Player";
     const title = document.createElement("h2");
     title.className = "zydka-player-title";
-    title.textContent = renderText(track.title);
+    title.textContent = renderText(fallbackDisplayTrack.title);
     const artist = document.createElement("p");
     artist.className = "zydka-player-artist";
-    artist.textContent = renderText(track.artist);
+    artist.textContent = renderText(fallbackDisplayTrack.artist);
     const actions = document.createElement("div");
     actions.className = "zydka-player-actions";
+    const previousButton = document.createElement("button");
+    previousButton.className = "zydka-player-button zydka-player-button-secondary";
+    previousButton.type = "button";
+    previousButton.textContent = "Previous";
     const playButton = document.createElement("button");
     playButton.className = "zydka-player-button";
     playButton.type = "button";
@@ -2663,6 +2769,13 @@
     pauseButton.className = "zydka-player-button zydka-player-button-secondary";
     pauseButton.type = "button";
     pauseButton.textContent = "Pause";
+    const nextButton = document.createElement("button");
+    nextButton.className = "zydka-player-button zydka-player-button-secondary";
+    nextButton.type = "button";
+    nextButton.textContent = "Next";
+    const trackCounter = document.createElement("p");
+    trackCounter.className = "zydka-player-counter";
+    trackCounter.textContent = "Track 1 / 1";
     const timeline = document.createElement("div");
     timeline.className = "zydka-player-timeline";
     const currentTime = document.createElement("span");
@@ -2691,33 +2804,53 @@
     const error = document.createElement("p");
     error.className = "zydka-player-error";
     error.hidden = true;
-    actions.append(playButton, pauseButton);
+    actions.append(previousButton, playButton, pauseButton, nextButton);
     timeline.append(currentTime, progress, duration);
-    card.append(eyebrow, title, artist, actions, timeline, status, error);
+    card.append(eyebrow, title, artist, actions, trackCounter, timeline, status, error);
     root.append(card);
     const refreshState = () => {
-      var _a, _b, _c, _d, _e, _f;
+      var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n;
       const state = (_a = window.ZydkaPlayer) == null ? void 0 : _a.state();
       if (!state) return;
-      const position = (_c = (_b = window.ZydkaPlayer) == null ? void 0 : _b.getCurrentTime()) != null ? _c : state.position;
-      const trackDuration = (_e = (_d = window.ZydkaPlayer) == null ? void 0 : _d.getDuration()) != null ? _e : state.duration;
+      const queue = (_c = (_b = window.ZydkaPlayer) == null ? void 0 : _b.getQueue()) != null ? _c : state.queue;
+      const currentIndex = (_e = (_d = window.ZydkaPlayer) == null ? void 0 : _d.getCurrentIndex()) != null ? _e : state.currentIndex;
+      const displayTrack = (_g = (_f = state.currentTrack) != null ? _f : queue[currentIndex]) != null ? _g : normalizeTrack(fallbackDisplayTrack);
+      const position = (_i = (_h = window.ZydkaPlayer) == null ? void 0 : _h.getCurrentTime()) != null ? _i : state.position;
+      const trackDuration = (_k = (_j = window.ZydkaPlayer) == null ? void 0 : _j.getDuration()) != null ? _k : state.duration;
       const progressPercent = trackDuration > 0 ? Math.min(100, position / trackDuration * 100) : 0;
+      const displayIndex = queue.length > 0 ? Math.max(0, currentIndex) + 1 : 0;
+      title.textContent = renderText((_l = displayTrack == null ? void 0 : displayTrack.title) != null ? _l : fallbackDisplayTrack.title);
+      artist.textContent = renderText((_m = displayTrack == null ? void 0 : displayTrack.artist) != null ? _m : fallbackDisplayTrack.artist);
+      trackCounter.textContent = `Track ${displayIndex} / ${queue.length}`;
+      previousButton.disabled = currentIndex <= 0;
+      nextButton.disabled = currentIndex >= queue.length - 1;
       statusValue.textContent = state.status;
       currentTime.textContent = formatTime(position);
       duration.textContent = formatTime(trackDuration);
       progressFill.style.width = `${progressPercent}%`;
       progress.setAttribute("aria-valuenow", String(Math.round(progressPercent)));
-      error.textContent = (_f = state.error) != null ? _f : "";
+      error.textContent = (_n = state.error) != null ? _n : "";
       error.hidden = !state.error;
     };
-    playButton.addEventListener("click", () => {
+    previousButton.addEventListener("click", () => {
       var _a;
-      (_a = window.ZydkaPlayer) == null ? void 0 : _a.play(track);
+      (_a = window.ZydkaPlayer) == null ? void 0 : _a.previous();
+      refreshState();
+    });
+    playButton.addEventListener("click", () => {
+      var _a, _b, _c;
+      const currentIndex = (_b = (_a = window.ZydkaPlayer) == null ? void 0 : _a.getCurrentIndex()) != null ? _b : 0;
+      (_c = window.ZydkaPlayer) == null ? void 0 : _c.playAt(Math.max(0, currentIndex));
       refreshState();
     });
     pauseButton.addEventListener("click", () => {
       var _a;
       (_a = window.ZydkaPlayer) == null ? void 0 : _a.pause();
+      refreshState();
+    });
+    nextButton.addEventListener("click", () => {
+      var _a;
+      (_a = window.ZydkaPlayer) == null ? void 0 : _a.next();
       refreshState();
     });
     progress.addEventListener("click", (event) => {
@@ -2746,11 +2879,18 @@
       seek: (seconds) => WordPressBridge.seek(seconds),
       getCurrentTime: () => WordPressBridge.getCurrentTime(),
       getDuration: () => WordPressBridge.getDuration(),
+      setQueue: (tracks) => WordPressBridge.setQueue(normalizeQueue(tracks)),
+      getQueue: () => WordPressBridge.getQueue(),
+      getCurrentIndex: () => WordPressBridge.getCurrentIndex(),
+      playAt: (index) => WordPressBridge.playAt(index),
+      next: () => WordPressBridge.next(),
+      previous: () => WordPressBridge.previous(),
       state: () => {
-        const { currentTrack, status, isPlaying, position, duration, error } = WordPressBridge.state();
-        return { currentTrack, status, isPlaying, position, duration, error };
+        const { currentTrack, currentIndex, queue, status, isPlaying, position, duration, error } = WordPressBridge.state();
+        return { currentTrack, currentIndex, queue, status, isPlaying, position, duration, error };
       }
     };
+    window.ZydkaPlayer.setQueue(buildTestQueue(shortcodeTrack));
     renderTestPlayer(root, shortcodeTrack);
     console.log("[Zydka Player] Bridge initialized - window.ZydkaPlayer ready.");
   }

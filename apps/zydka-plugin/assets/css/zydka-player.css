@@ -141,3 +141,13 @@
   border-radius: inherit;
   background: #151515;
 }
+.zydka-player-counter {
+  margin: 12px 0 0;
+  color: #4b4b4b;
+  font-size: 13px;
+}
+
+.zydka-player-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

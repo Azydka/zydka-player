@@ -19,6 +19,8 @@ interface ZydkaTrack {
 
 interface ZydkaPlayerState {
   currentTrack: ZydkaTrack | null;
+  currentIndex: number;
+  queue: ZydkaTrack[];
   status: 'idle' | 'loading' | 'ready' | 'playing' | 'paused' | 'ended' | 'error';
   isPlaying: boolean;
   position: number;
@@ -32,6 +34,12 @@ interface ZydkaPlayerAPI {
   seek: (seconds: number) => number;
   getCurrentTime: () => number;
   getDuration: () => number;
+  setQueue: (tracks: ZydkaTrackInput[]) => void;
+  getQueue: () => ZydkaTrack[];
+  getCurrentIndex: () => number;
+  playAt: (index: number) => boolean;
+  next: () => boolean;
+  previous: () => boolean;
   state: () => ZydkaPlayerState;
 }
 
@@ -68,6 +76,18 @@ function normalizeTrack(track: ZydkaTrackInput): ZydkaTrack | null {
   };
 }
 
+function normalizeQueue(tracks: ZydkaTrackInput[]): ZydkaTrack[] {
+  return tracks.reduce<ZydkaTrack[]>((queue, track) => {
+    const normalizedTrack = normalizeTrack(track);
+
+    if (normalizedTrack) {
+      queue.push(normalizedTrack);
+    }
+
+    return queue;
+  }, []);
+}
+
 function readTrackFromRoot(root: HTMLElement): ZydkaTrackInput {
   return {
     id: root.dataset.trackId || fallbackTrack.id,
@@ -75,6 +95,17 @@ function readTrackFromRoot(root: HTMLElement): ZydkaTrackInput {
     artist: root.dataset.artist || fallbackTrack.artist,
     src: root.dataset.src || fallbackTrack.src,
   };
+}
+
+function buildTestQueue(track: ZydkaTrackInput): ZydkaTrackInput[] {
+  return [
+    track,
+    {
+      ...track,
+      id: `${track.id}-test-2`,
+      title: `${renderText(track.title)} (Test 2)`,
+    },
+  ];
 }
 
 function renderText(value: string | number | undefined): string {
@@ -91,7 +122,7 @@ function formatTime(seconds: number): string {
   return `${minutes}:${String(remainingSeconds).padStart(2, '0')}`;
 }
 
-function renderTestPlayer(root: HTMLElement, track: ZydkaTrackInput): void {
+function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInput): void {
   root.innerHTML = '';
 
   const card = document.createElement('div');
@@ -103,14 +134,19 @@ function renderTestPlayer(root: HTMLElement, track: ZydkaTrackInput): void {
 
   const title = document.createElement('h2');
   title.className = 'zydka-player-title';
-  title.textContent = renderText(track.title);
+  title.textContent = renderText(fallbackDisplayTrack.title);
 
   const artist = document.createElement('p');
   artist.className = 'zydka-player-artist';
-  artist.textContent = renderText(track.artist);
+  artist.textContent = renderText(fallbackDisplayTrack.artist);
 
   const actions = document.createElement('div');
   actions.className = 'zydka-player-actions';
+
+  const previousButton = document.createElement('button');
+  previousButton.className = 'zydka-player-button zydka-player-button-secondary';
+  previousButton.type = 'button';
+  previousButton.textContent = 'Previous';
 
   const playButton = document.createElement('button');
   playButton.className = 'zydka-player-button';
@@ -121,6 +157,15 @@ function renderTestPlayer(root: HTMLElement, track: ZydkaTrackInput): void {
   pauseButton.className = 'zydka-player-button zydka-player-button-secondary';
   pauseButton.type = 'button';
   pauseButton.textContent = 'Pause';
+
+  const nextButton = document.createElement('button');
+  nextButton.className = 'zydka-player-button zydka-player-button-secondary';
+  nextButton.type = 'button';
+  nextButton.textContent = 'Next';
+
+  const trackCounter = document.createElement('p');
+  trackCounter.className = 'zydka-player-counter';
+  trackCounter.textContent = 'Track 1 / 1';
 
   const timeline = document.createElement('div');
   timeline.className = 'zydka-player-timeline';
@@ -158,9 +203,9 @@ function renderTestPlayer(root: HTMLElement, track: ZydkaTrackInput): void {
   error.className = 'zydka-player-error';
   error.hidden = true;
 
-  actions.append(playButton, pauseButton);
+  actions.append(previousButton, playButton, pauseButton, nextButton);
   timeline.append(currentTime, progress, duration);
-  card.append(eyebrow, title, artist, actions, timeline, status, error);
+  card.append(eyebrow, title, artist, actions, trackCounter, timeline, status, error);
   root.append(card);
 
   const refreshState = (): void => {
@@ -168,10 +213,19 @@ function renderTestPlayer(root: HTMLElement, track: ZydkaTrackInput): void {
 
     if (!state) return;
 
+    const queue = window.ZydkaPlayer?.getQueue() ?? state.queue;
+    const currentIndex = window.ZydkaPlayer?.getCurrentIndex() ?? state.currentIndex;
+    const displayTrack = state.currentTrack ?? queue[currentIndex] ?? normalizeTrack(fallbackDisplayTrack);
     const position = window.ZydkaPlayer?.getCurrentTime() ?? state.position;
     const trackDuration = window.ZydkaPlayer?.getDuration() ?? state.duration;
     const progressPercent = trackDuration > 0 ? Math.min(100, (position / trackDuration) * 100) : 0;
+    const displayIndex = queue.length > 0 ? Math.max(0, currentIndex) + 1 : 0;
 
+    title.textContent = renderText(displayTrack?.title ?? fallbackDisplayTrack.title);
+    artist.textContent = renderText(displayTrack?.artist ?? fallbackDisplayTrack.artist);
+    trackCounter.textContent = `Track ${displayIndex} / ${queue.length}`;
+    previousButton.disabled = currentIndex <= 0;
+    nextButton.disabled = currentIndex >= queue.length - 1;
     statusValue.textContent = state.status;
     currentTime.textContent = formatTime(position);
     duration.textContent = formatTime(trackDuration);
@@ -181,13 +235,24 @@ function renderTestPlayer(root: HTMLElement, track: ZydkaTrackInput): void {
     error.hidden = !state.error;
   };
 
+  previousButton.addEventListener('click', () => {
+    window.ZydkaPlayer?.previous();
+    refreshState();
+  });
+
   playButton.addEventListener('click', () => {
-    window.ZydkaPlayer?.play(track);
+    const currentIndex = window.ZydkaPlayer?.getCurrentIndex() ?? 0;
+    window.ZydkaPlayer?.playAt(Math.max(0, currentIndex));
     refreshState();
   });
 
   pauseButton.addEventListener('click', () => {
     window.ZydkaPlayer?.pause();
+    refreshState();
+  });
+
+  nextButton.addEventListener('click', () => {
+    window.ZydkaPlayer?.next();
     refreshState();
   });
 
@@ -226,12 +291,19 @@ function bootstrap(): void {
     seek: (seconds: number) => WordPressBridge.seek(seconds),
     getCurrentTime: () => WordPressBridge.getCurrentTime(),
     getDuration: () => WordPressBridge.getDuration(),
+    setQueue: (tracks: ZydkaTrackInput[]) => WordPressBridge.setQueue(normalizeQueue(tracks)),
+    getQueue: () => WordPressBridge.getQueue(),
+    getCurrentIndex: () => WordPressBridge.getCurrentIndex(),
+    playAt: (index: number) => WordPressBridge.playAt(index),
+    next: () => WordPressBridge.next(),
+    previous: () => WordPressBridge.previous(),
     state: () => {
-      const { currentTrack, status, isPlaying, position, duration, error } = WordPressBridge.state();
-      return { currentTrack, status, isPlaying, position, duration, error };
+      const { currentTrack, currentIndex, queue, status, isPlaying, position, duration, error } = WordPressBridge.state();
+      return { currentTrack, currentIndex, queue, status, isPlaying, position, duration, error };
     },
   };
 
+  window.ZydkaPlayer.setQueue(buildTestQueue(shortcodeTrack));
   renderTestPlayer(root, shortcodeTrack);
 
   console.log('[Zydka Player] Bridge initialized - window.ZydkaPlayer ready.');

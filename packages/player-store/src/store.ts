@@ -11,6 +11,12 @@ function syncTimeline(): void {
   });
 }
 
+function findTrackIndex(queue: ITrack[], track: ITrack | null): number {
+  if (!track) return -1;
+
+  return queue.findIndex((queuedTrack) => queuedTrack.id === track.id);
+}
+
 audioEngine.on("loaded", ({ duration }) => {
   usePlayerStore.setState({
     status: "ready",
@@ -65,6 +71,8 @@ audioEngine.on("error", ({ message }) => {
 
 export const usePlayerStore = createStore<IPlayerState>((set, get) => ({
   currentTrack: null,
+  currentIndex: -1,
+  queue: [],
   status: "idle",
   isPlaying: false,
   position: 0,
@@ -75,6 +83,7 @@ export const usePlayerStore = createStore<IPlayerState>((set, get) => ({
     if (!track) {
       set({
         currentTrack: null,
+        currentIndex: -1,
         status: "idle",
         isPlaying: false,
         position: 0,
@@ -85,8 +94,42 @@ export const usePlayerStore = createStore<IPlayerState>((set, get) => ({
       return;
     }
 
+    set((state) => ({
+      currentTrack: track,
+      currentIndex: findTrackIndex(state.queue, track),
+      status: "loading",
+      isPlaying: false,
+      position: 0,
+      duration: 0,
+      error: null,
+    }));
+
+    audioEngine.loadTrack(track);
+  },
+
+  setQueue: (tracks: ITrack[]) => {
+    set((state) => {
+      const currentIndex = findTrackIndex(tracks, state.currentTrack);
+
+      return {
+        queue: tracks,
+        currentIndex: currentIndex >= 0 ? currentIndex : tracks.length > 0 ? 0 : -1,
+      };
+    });
+  },
+
+  getQueue: () => get().queue,
+
+  getCurrentIndex: () => get().currentIndex,
+
+  playAt: (index: number) => {
+    const track = get().queue[index];
+
+    if (!track) return false;
+
     set({
       currentTrack: track,
+      currentIndex: index,
       status: "loading",
       isPlaying: false,
       position: 0,
@@ -95,6 +138,28 @@ export const usePlayerStore = createStore<IPlayerState>((set, get) => ({
     });
 
     audioEngine.loadTrack(track);
+    audioEngine.play();
+    syncTimeline();
+
+    return true;
+  },
+
+  next: () => {
+    const { currentIndex, queue, playAt } = get();
+
+    if (queue.length === 0) return false;
+    if (currentIndex >= queue.length - 1) return false;
+
+    return playAt(currentIndex < 0 ? 0 : currentIndex + 1);
+  },
+
+  previous: () => {
+    const { currentIndex, queue, playAt } = get();
+
+    if (queue.length === 0) return false;
+    if (currentIndex <= 0) return false;
+
+    return playAt(currentIndex - 1);
   },
 
   play: () => {

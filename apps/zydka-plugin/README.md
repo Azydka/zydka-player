@@ -147,6 +147,27 @@ Exemple validé :
 [/zydka_playlist]
 ```
 
+### CTA par track
+
+Les shortcodes `[zydka_player]` et `[zydka_track]` acceptent les attributs `buy_url` et `buy_label`.
+
+Si `buy_url` est fourni, le player affiche un bouton CTA pour la track active. Si `buy_label` est vide, le label par défaut est `Voir le projet`.
+
+Single player :
+
+```text
+[zydka_player id="new-york-shit" title="New York Shit" artist="Louis94" src="https://www.louis94.com/wp-content/uploads/2026/06/04.-New-York-Shit-feat.-Swizz-Beatz.mp3" buy_url="https://www.louis94.com/" buy_label="Voir le projet"]
+```
+
+Playlist :
+
+```text
+[zydka_playlist]
+[zydka_track id="new-york-shit" title="New York Shit" artist="Louis94" src="https://www.louis94.com/wp-content/uploads/2026/06/04.-New-York-Shit-feat.-Swizz-Beatz.mp3" cover="https://www.louis94.com/wp-content/uploads/2026/06/cover.jpg" buy_url="https://www.louis94.com/" buy_label="Voir le projet"]
+[zydka_track id="lifes-a-bitch-arsenal-mix" title="Life's a Bitch — Arsenal Mix" artist="Louis94" src="https://www.louis94.com/wp-content/uploads/2026/06/2-06-Lifes-a-Bitch-feat.-AZ-Arsenal-Mix.m4a"]
+[/zydka_playlist]
+```
+
 ### 23/06/2026 - louis94.com - Covers embarquées MP3
 
 Validation production réussie après installation du ZIP généré.

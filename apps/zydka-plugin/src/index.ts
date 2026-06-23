@@ -8,6 +8,10 @@ interface ZydkaTrackInput {
   title?: string;
   artist?: string;
   cover?: string;
+  buy_url?: string;
+  buy_label?: string;
+  buyUrl?: string;
+  buyLabel?: string;
   duration?: number;
 }
 
@@ -17,6 +21,8 @@ interface ZydkaTrack {
   title?: string;
   artist?: string;
   cover?: string;
+  buyUrl?: string;
+  buyLabel?: string;
   duration?: number;
 }
 
@@ -83,6 +89,8 @@ function normalizeTrack(track: ZydkaTrackInput): ZydkaTrack | null {
     title: track.title,
     artist: track.artist,
     cover: track.cover,
+    buyUrl: track.buyUrl ?? track.buy_url,
+    buyLabel: track.buyLabel ?? track.buy_label,
     duration: track.duration,
   };
 }
@@ -106,6 +114,8 @@ function readTrackFromRoot(root: HTMLElement): ZydkaTrackInput {
     artist: root.dataset.artist || fallbackTrack.artist,
     src: root.dataset.src || fallbackTrack.src,
     cover: root.dataset.cover || fallbackTrack.cover,
+    buyUrl: root.dataset.buyUrl,
+    buyLabel: root.dataset.buyLabel,
   };
 }
 
@@ -138,6 +148,10 @@ function getCoverLabel(track: ZydkaTrackInput | ZydkaTrack | null | undefined): 
 
 function hasExplicitCover(track: ZydkaTrack | null | undefined): boolean {
   return Boolean(track?.cover?.trim());
+}
+
+function getBuyLabel(track: ZydkaTrack | null | undefined): string {
+  return track?.buyLabel?.trim() || 'Voir le projet';
 }
 
 function formatTime(seconds: number): string {
@@ -174,6 +188,12 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
   artist.className = 'zydka-player-artist';
   artist.textContent = renderText(fallbackDisplayTrack.artist);
 
+  const buyLink = document.createElement('a');
+  buyLink.className = 'zydka-player-buy-link';
+  buyLink.target = '_blank';
+  buyLink.rel = 'noopener noreferrer';
+  buyLink.hidden = true;
+
   const cover = document.createElement('div');
   cover.className = 'zydka-player-cover';
 
@@ -205,7 +225,7 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
   statusValue.textContent = 'idle';
   status.append(statusValue);
 
-  textBlock.append(eyebrow, title, artist);
+  textBlock.append(eyebrow, title, artist, buyLink);
   header.append(textBlock, headerAside);
 
   const actions = document.createElement('div');
@@ -465,6 +485,18 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
     card.className = `zydka-player-card zydka-player-state-${state.status}`;
     title.textContent = renderText(displayTrack?.title ?? fallbackDisplayTrack.title);
     artist.textContent = renderText(displayTrack?.artist ?? fallbackDisplayTrack.artist);
+    const buyUrl = displayTrack?.buyUrl?.trim();
+
+    if (buyUrl) {
+      buyLink.href = buyUrl;
+      buyLink.textContent = getBuyLabel(displayTrack);
+      buyLink.hidden = false;
+    } else {
+      buyLink.removeAttribute('href');
+      buyLink.textContent = '';
+      buyLink.hidden = true;
+    }
+
     coverFallback.textContent = getCoverLabel(displayTrack ?? fallbackDisplayTrack);
     requestEmbeddedCover(displayTrack);
 

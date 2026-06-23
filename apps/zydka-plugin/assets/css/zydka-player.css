@@ -109,6 +109,39 @@
   line-height: 1.35;
 }
 
+.zydka-player-buy-link[hidden] {
+  display: none;
+}
+
+.zydka-player-buy-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  margin-top: 14px;
+  padding: 9px 14px;
+  border: 1px solid #111111;
+  border-radius: 6px;
+  background: #111111;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  text-decoration: none;
+}
+
+.zydka-player-buy-link:hover,
+.zydka-player-buy-link:focus {
+  background: #2b2b2b;
+  color: #ffffff;
+  text-decoration: none;
+}
+
+.zydka-player-buy-link:focus-visible {
+  outline: 2px solid #111111;
+  outline-offset: 3px;
+}
+
 .zydka-player-counter {
   flex: 0 0 auto;
   padding-top: 2px;
@@ -494,6 +527,12 @@
 
   .zydka-player-title {
     font-size: 20px;
+  }
+
+  .zydka-player-buy-link {
+    display: flex;
+    width: 100%;
+    margin-top: 12px;
   }
 
   .zydka-player-actions {

@@ -2974,7 +2974,7 @@
     src: "https://www.louis94.com/wp-content/uploads/2026/06/04.-New-York-Shit-feat.-Swizz-Beatz.mp3"
   };
   function normalizeTrack(track) {
-    var _a;
+    var _a, _b, _c;
     const audioUrl = (_a = track.audioUrl) != null ? _a : track.src;
     if (!audioUrl) {
       console.error(
@@ -2989,6 +2989,8 @@
       title: track.title,
       artist: track.artist,
       cover: track.cover,
+      buyUrl: (_b = track.buyUrl) != null ? _b : track.buy_url,
+      buyLabel: (_c = track.buyLabel) != null ? _c : track.buy_label,
       duration: track.duration
     };
   }
@@ -3007,7 +3009,9 @@
       title: root.dataset.title || fallbackTrack.title,
       artist: root.dataset.artist || fallbackTrack.artist,
       src: root.dataset.src || fallbackTrack.src,
-      cover: root.dataset.cover || fallbackTrack.cover
+      cover: root.dataset.cover || fallbackTrack.cover,
+      buyUrl: root.dataset.buyUrl,
+      buyLabel: root.dataset.buyLabel
     };
   }
   function readQueueFromRoot(root, fallbackSingleTrack) {
@@ -3035,6 +3039,10 @@
     var _a;
     return Boolean((_a = track == null ? void 0 : track.cover) == null ? void 0 : _a.trim());
   }
+  function getBuyLabel(track) {
+    var _a;
+    return ((_a = track == null ? void 0 : track.buyLabel) == null ? void 0 : _a.trim()) || "Voir le projet";
+  }
   function formatTime(seconds) {
     if (!Number.isFinite(seconds) || seconds <= 0) return "0:00";
     const totalSeconds = Math.floor(seconds);
@@ -3059,6 +3067,11 @@
     const artist = document.createElement("p");
     artist.className = "zydka-player-artist";
     artist.textContent = renderText(fallbackDisplayTrack.artist);
+    const buyLink = document.createElement("a");
+    buyLink.className = "zydka-player-buy-link";
+    buyLink.target = "_blank";
+    buyLink.rel = "noopener noreferrer";
+    buyLink.hidden = true;
     const cover = document.createElement("div");
     cover.className = "zydka-player-cover";
     const coverImage = document.createElement("img");
@@ -3081,7 +3094,7 @@
     const statusValue = document.createElement("span");
     statusValue.textContent = "idle";
     status.append(statusValue);
-    textBlock.append(eyebrow, title, artist);
+    textBlock.append(eyebrow, title, artist, buyLink);
     header.append(textBlock, headerAside);
     const actions = document.createElement("div");
     actions.className = "zydka-player-actions";
@@ -3267,7 +3280,7 @@
       });
     };
     refreshState = () => {
-      var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r;
+      var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s;
       const state = (_a = window.ZydkaPlayer) == null ? void 0 : _a.state();
       if (!state) return;
       const queue = (_c = (_b = window.ZydkaPlayer) == null ? void 0 : _b.getQueue()) != null ? _c : state.queue;
@@ -3282,6 +3295,16 @@
       card.className = `zydka-player-card zydka-player-state-${state.status}`;
       title.textContent = renderText((_p = displayTrack == null ? void 0 : displayTrack.title) != null ? _p : fallbackDisplayTrack.title);
       artist.textContent = renderText((_q = displayTrack == null ? void 0 : displayTrack.artist) != null ? _q : fallbackDisplayTrack.artist);
+      const buyUrl = (_r = displayTrack == null ? void 0 : displayTrack.buyUrl) == null ? void 0 : _r.trim();
+      if (buyUrl) {
+        buyLink.href = buyUrl;
+        buyLink.textContent = getBuyLabel(displayTrack);
+        buyLink.hidden = false;
+      } else {
+        buyLink.removeAttribute("href");
+        buyLink.textContent = "";
+        buyLink.hidden = true;
+      }
       coverFallback.textContent = getCoverLabel(displayTrack != null ? displayTrack : fallbackDisplayTrack);
       requestEmbeddedCover(displayTrack);
       const displayCoverUrl = getDisplayCoverUrl(displayTrack);
@@ -3310,7 +3333,7 @@
       muteButton.textContent = muted ? "Unmute" : "Mute";
       muteButton.setAttribute("aria-label", muted ? "Unmute" : "Mute");
       renderQueueItems(queue, currentIndex);
-      error.textContent = (_r = state.error) != null ? _r : "";
+      error.textContent = (_s = state.error) != null ? _s : "";
       error.hidden = !state.error;
     };
     coverImage.addEventListener("error", () => {

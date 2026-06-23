@@ -4,6 +4,8 @@ export interface AudioTrack {
   title?: string;
   artist?: string;
   cover?: string;
+  buyUrl?: string;
+  buyLabel?: string;
   duration?: number;
 }
 

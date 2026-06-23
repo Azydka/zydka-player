@@ -168,6 +168,29 @@ Playlist :
 [/zydka_playlist]
 ```
 
+### 24/06/2026 - louis94.com - CTA par track / buy link
+
+Validation production réussie après installation et test du ZIP généré sur louis94.com.
+
+Branche : `feature/zydka-player-buy-link`  
+Feature : CTA par track via `buy_url` et `buy_label`
+
+Résultat :
+
+- Bouton CTA affiché quand `buy_url` est présent.
+- Bouton masqué quand `buy_url` est absent.
+- `buy_label` personnalisé OK.
+- Label par défaut `Voir le projet` OK si `buy_label` est absent.
+- Ouverture en nouvel onglet OK.
+- Mise à jour du CTA sur Previous / Next OK.
+- Mise à jour du CTA via Queue OK.
+- Play/Pause OK.
+- Progression/seek OK.
+- Volume/mute OK.
+- Covers OK.
+- Extraction cover MP3 ID3/APIC toujours OK.
+- Fallback OK.
+
 ### 23/06/2026 - louis94.com - Covers embarquées MP3
 
 Validation production réussie après installation du ZIP généré.

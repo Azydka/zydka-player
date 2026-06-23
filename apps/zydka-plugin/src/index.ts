@@ -1,4 +1,5 @@
 import { WordPressBridge } from '@zydka/wordpress-bridge';
+import { getEmbeddedCoverUrl, revokeEmbeddedCoverCache } from './metadataCover';
 
 interface ZydkaTrackInput {
   id: string | number;
@@ -133,6 +134,10 @@ function renderText(value: string | number | undefined): string {
 function getCoverLabel(track: ZydkaTrackInput | ZydkaTrack | null | undefined): string {
   const label = track?.title || track?.artist || 'Z';
   return String(label).trim().charAt(0).toUpperCase() || 'Z';
+}
+
+function hasExplicitCover(track: ZydkaTrack | null | undefined): boolean {
+  return Boolean(track?.cover?.trim());
 }
 
 function formatTime(seconds: number): string {
@@ -322,6 +327,31 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
   root.append(card);
 
   const failedCoverUrls = new Set<string>();
+  const embeddedCoverUrls = new Map<string, string>();
+  const requestedEmbeddedCoverUrls = new Set<string>();
+
+  let refreshState = (): void => undefined;
+
+  const getDisplayCoverUrl = (track: ZydkaTrack | null | undefined): string | null => {
+    if (!track) return null;
+    if (hasExplicitCover(track)) return track.cover ?? null;
+    return embeddedCoverUrls.get(track.audioUrl) ?? null;
+  };
+
+  const requestEmbeddedCover = (track: ZydkaTrack | null | undefined): void => {
+    if (!track || hasExplicitCover(track) || requestedEmbeddedCoverUrls.has(track.audioUrl)) {
+      return;
+    }
+
+    requestedEmbeddedCoverUrls.add(track.audioUrl);
+
+    void getEmbeddedCoverUrl(track.audioUrl).then((coverUrl) => {
+      if (!coverUrl) return;
+
+      embeddedCoverUrls.set(track.audioUrl, coverUrl);
+      refreshState();
+    });
+  };
 
   const setQueuePanelOpen = (isOpen: boolean): void => {
     queuePanel.hidden = !isOpen;
@@ -363,10 +393,15 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
       const thumbFallback = document.createElement('span');
       thumbFallback.className = 'zydka-player-queue-thumb-fallback';
       thumbFallback.textContent = getCoverLabel(track);
+      if (queuePanel.classList.contains('is-open')) {
+        requestEmbeddedCover(track);
+      }
 
-      if (track.cover && !failedCoverUrls.has(track.cover)) {
-        thumbImage.src = track.cover;
-        thumbImage.dataset.coverSrc = track.cover;
+      const thumbCoverUrl = getDisplayCoverUrl(track);
+
+      if (thumbCoverUrl && !failedCoverUrls.has(thumbCoverUrl)) {
+        thumbImage.src = thumbCoverUrl;
+        thumbImage.dataset.coverSrc = thumbCoverUrl;
         thumbImage.hidden = false;
         thumbFallback.hidden = true;
       }
@@ -412,7 +447,7 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
     });
   };
 
-  const refreshState = (): void => {
+  refreshState = (): void => {
     const state = window.ZydkaPlayer?.state();
 
     if (!state) return;
@@ -431,10 +466,13 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
     title.textContent = renderText(displayTrack?.title ?? fallbackDisplayTrack.title);
     artist.textContent = renderText(displayTrack?.artist ?? fallbackDisplayTrack.artist);
     coverFallback.textContent = getCoverLabel(displayTrack ?? fallbackDisplayTrack);
+    requestEmbeddedCover(displayTrack);
 
-    if (displayTrack?.cover && !failedCoverUrls.has(displayTrack.cover)) {
-      coverImage.src = displayTrack.cover;
-      coverImage.dataset.coverSrc = displayTrack.cover;
+    const displayCoverUrl = getDisplayCoverUrl(displayTrack);
+
+    if (displayCoverUrl && !failedCoverUrls.has(displayCoverUrl)) {
+      coverImage.src = displayCoverUrl;
+      coverImage.dataset.coverSrc = displayCoverUrl;
       coverImage.hidden = false;
       coverFallback.hidden = true;
     } else {
@@ -595,3 +633,4 @@ function bootstrap(): void {
 }
 
 document.addEventListener('DOMContentLoaded', bootstrap);
+window.addEventListener('beforeunload', revokeEmbeddedCoverCache, { once: true });

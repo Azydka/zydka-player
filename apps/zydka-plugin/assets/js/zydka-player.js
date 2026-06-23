@@ -2786,6 +2786,186 @@
     }
   };
 
+  // src/metadataCover.ts
+  var ID3_HEADER_BYTES = 10;
+  var MAX_ID3_TAG_BYTES = 4 * 1024 * 1024;
+  var embeddedCoverCache = /* @__PURE__ */ new Map();
+  var blobCoverUrls = /* @__PURE__ */ new Set();
+  function isDevHost() {
+    return typeof window !== "undefined" && ["localhost", "127.0.0.1"].includes(window.location.hostname);
+  }
+  function warnMetadataCover(message, error) {
+    if (!isDevHost()) return;
+    console.warn(`[Zydka Player] ${message}`, error != null ? error : "");
+  }
+  function readSynchsafeInteger(bytes, offset) {
+    return bytes[offset] << 21 | bytes[offset + 1] << 14 | bytes[offset + 2] << 7 | bytes[offset + 3];
+  }
+  function readUint24(bytes, offset) {
+    return bytes[offset] << 16 | bytes[offset + 1] << 8 | bytes[offset + 2];
+  }
+  function readUint32(bytes, offset) {
+    return bytes[offset] * 16777216 + (bytes[offset + 1] << 16) + (bytes[offset + 2] << 8) + bytes[offset + 3];
+  }
+  function readAscii(bytes, offset, length) {
+    let value = "";
+    for (let index = offset; index < offset + length; index += 1) {
+      value += String.fromCharCode(bytes[index]);
+    }
+    return value;
+  }
+  function findTerminator(bytes, offset, encoding) {
+    if (encoding === 1 || encoding === 2) {
+      for (let index = offset; index < bytes.length - 1; index += 2) {
+        if (bytes[index] === 0 && bytes[index + 1] === 0) {
+          return index + 2;
+        }
+      }
+      return -1;
+    }
+    for (let index = offset; index < bytes.length; index += 1) {
+      if (bytes[index] === 0) {
+        return index + 1;
+      }
+    }
+    return -1;
+  }
+  async function fetchByteRange(src, start, end) {
+    const response = await fetch(src, {
+      headers: {
+        Range: `bytes=${start}-${end}`
+      }
+    });
+    if (!response.ok) {
+      throw new Error(`Audio metadata fetch failed with ${response.status}`);
+    }
+    return new Uint8Array(await response.arrayBuffer());
+  }
+  function parseApicFrame(frameData) {
+    if (frameData.length < 5) return null;
+    const textEncoding = frameData[0];
+    const mimeTerminator = frameData.indexOf(0, 1);
+    if (mimeTerminator < 0 || mimeTerminator + 2 >= frameData.length) {
+      return null;
+    }
+    const mimeType = readAscii(frameData, 1, mimeTerminator - 1).toLowerCase();
+    const descriptionStart = mimeTerminator + 2;
+    const imageStart = findTerminator(frameData, descriptionStart, textEncoding);
+    if (imageStart < 0 || imageStart >= frameData.length) {
+      return null;
+    }
+    return {
+      mimeType: mimeType.startsWith("image/") ? mimeType : "image/jpeg",
+      data: frameData.slice(imageStart)
+    };
+  }
+  function parsePicFrame(frameData) {
+    if (frameData.length < 6) return null;
+    const textEncoding = frameData[0];
+    const imageFormat = readAscii(frameData, 1, 3).toLowerCase();
+    const descriptionStart = 5;
+    const imageStart = findTerminator(frameData, descriptionStart, textEncoding);
+    if (imageStart < 0 || imageStart >= frameData.length) {
+      return null;
+    }
+    return {
+      mimeType: imageFormat === "png" ? "image/png" : "image/jpeg",
+      data: frameData.slice(imageStart)
+    };
+  }
+  function getId3FrameSize(bytes, offset, version) {
+    return version === 4 ? readSynchsafeInteger(bytes, offset) : readUint32(bytes, offset);
+  }
+  function parseId3Cover(bytes) {
+    if (bytes.length < ID3_HEADER_BYTES || readAscii(bytes, 0, 3) !== "ID3") {
+      return null;
+    }
+    const version = bytes[3];
+    const flags = bytes[5];
+    const tagSize = readSynchsafeInteger(bytes, 6);
+    const tagEnd = Math.min(bytes.length, ID3_HEADER_BYTES + tagSize);
+    let offset = ID3_HEADER_BYTES;
+    if (flags & 64) {
+      if (version === 3 && offset + 4 <= tagEnd) {
+        offset += 4 + readUint32(bytes, offset);
+      } else if (version === 4 && offset + 4 <= tagEnd) {
+        offset += readSynchsafeInteger(bytes, offset);
+      }
+    }
+    if (version === 2) {
+      while (offset + 6 <= tagEnd) {
+        const frameId = readAscii(bytes, offset, 3);
+        const frameSize = readUint24(bytes, offset + 3);
+        if (!frameId.trim() || frameSize <= 0 || offset + 6 + frameSize > tagEnd) {
+          break;
+        }
+        if (frameId === "PIC") {
+          return parsePicFrame(bytes.slice(offset + 6, offset + 6 + frameSize));
+        }
+        offset += 6 + frameSize;
+      }
+      return null;
+    }
+    if (version !== 3 && version !== 4) {
+      return null;
+    }
+    while (offset + 10 <= tagEnd) {
+      const frameId = readAscii(bytes, offset, 4);
+      const frameSize = getId3FrameSize(bytes, offset + 4, version);
+      if (!frameId.trim() || frameSize <= 0 || offset + 10 + frameSize > tagEnd) {
+        break;
+      }
+      if (frameId === "APIC") {
+        return parseApicFrame(bytes.slice(offset + 10, offset + 10 + frameSize));
+      }
+      offset += 10 + frameSize;
+    }
+    return null;
+  }
+  async function extractMp3CoverUrl(src) {
+    const header = await fetchByteRange(src, 0, ID3_HEADER_BYTES - 1);
+    if (header.length < ID3_HEADER_BYTES || readAscii(header, 0, 3) !== "ID3") {
+      return null;
+    }
+    const tagSize = readSynchsafeInteger(header, 6);
+    const totalTagBytes = ID3_HEADER_BYTES + tagSize;
+    if (tagSize <= 0 || totalTagBytes > MAX_ID3_TAG_BYTES) {
+      warnMetadataCover("Embedded cover skipped: ID3 tag is empty or too large.");
+      return null;
+    }
+    const tagBytes = await fetchByteRange(src, 0, totalTagBytes - 1);
+    const cover = parseId3Cover(tagBytes);
+    if (!cover || cover.data.length === 0) {
+      return null;
+    }
+    const imageBuffer = new ArrayBuffer(cover.data.byteLength);
+    new Uint8Array(imageBuffer).set(cover.data);
+    const blobUrl = URL.createObjectURL(new Blob([imageBuffer], { type: cover.mimeType }));
+    blobCoverUrls.add(blobUrl);
+    return blobUrl;
+  }
+  function getEmbeddedCoverUrl(src) {
+    const normalizedSrc = src.trim();
+    if (!normalizedSrc || typeof fetch !== "function" || typeof URL === "undefined") {
+      return Promise.resolve(null);
+    }
+    const cachedCover = embeddedCoverCache.get(normalizedSrc);
+    if (cachedCover) {
+      return cachedCover;
+    }
+    const coverPromise = extractMp3CoverUrl(normalizedSrc).catch((error) => {
+      warnMetadataCover("Embedded cover extraction failed; using fallback.", error);
+      return null;
+    });
+    embeddedCoverCache.set(normalizedSrc, coverPromise);
+    return coverPromise;
+  }
+  function revokeEmbeddedCoverCache() {
+    blobCoverUrls.forEach((blobUrl) => URL.revokeObjectURL(blobUrl));
+    blobCoverUrls.clear();
+    embeddedCoverCache.clear();
+  }
+
   // src/index.ts
   var fallbackTrack = {
     id: "demo-track",
@@ -2850,6 +3030,10 @@
   function getCoverLabel(track) {
     const label = (track == null ? void 0 : track.title) || (track == null ? void 0 : track.artist) || "Z";
     return String(label).trim().charAt(0).toUpperCase() || "Z";
+  }
+  function hasExplicitCover(track) {
+    var _a;
+    return Boolean((_a = track == null ? void 0 : track.cover) == null ? void 0 : _a.trim());
   }
   function formatTime(seconds) {
     if (!Number.isFinite(seconds) || seconds <= 0) return "0:00";
@@ -2990,6 +3174,26 @@
     card.append(header, actions, timeline, volumeControl, footer, queuePanel);
     root.append(card);
     const failedCoverUrls = /* @__PURE__ */ new Set();
+    const embeddedCoverUrls = /* @__PURE__ */ new Map();
+    const requestedEmbeddedCoverUrls = /* @__PURE__ */ new Set();
+    let refreshState = () => void 0;
+    const getDisplayCoverUrl = (track) => {
+      var _a, _b;
+      if (!track) return null;
+      if (hasExplicitCover(track)) return (_a = track.cover) != null ? _a : null;
+      return (_b = embeddedCoverUrls.get(track.audioUrl)) != null ? _b : null;
+    };
+    const requestEmbeddedCover = (track) => {
+      if (!track || hasExplicitCover(track) || requestedEmbeddedCoverUrls.has(track.audioUrl)) {
+        return;
+      }
+      requestedEmbeddedCoverUrls.add(track.audioUrl);
+      void getEmbeddedCoverUrl(track.audioUrl).then((coverUrl) => {
+        if (!coverUrl) return;
+        embeddedCoverUrls.set(track.audioUrl, coverUrl);
+        refreshState();
+      });
+    };
     const setQueuePanelOpen = (isOpen) => {
       queuePanel.hidden = !isOpen;
       queuePanel.classList.toggle("is-open", isOpen);
@@ -3021,9 +3225,13 @@
         const thumbFallback = document.createElement("span");
         thumbFallback.className = "zydka-player-queue-thumb-fallback";
         thumbFallback.textContent = getCoverLabel(track);
-        if (track.cover && !failedCoverUrls.has(track.cover)) {
-          thumbImage.src = track.cover;
-          thumbImage.dataset.coverSrc = track.cover;
+        if (queuePanel.classList.contains("is-open")) {
+          requestEmbeddedCover(track);
+        }
+        const thumbCoverUrl = getDisplayCoverUrl(track);
+        if (thumbCoverUrl && !failedCoverUrls.has(thumbCoverUrl)) {
+          thumbImage.src = thumbCoverUrl;
+          thumbImage.dataset.coverSrc = thumbCoverUrl;
           thumbImage.hidden = false;
           thumbFallback.hidden = true;
         }
@@ -3058,7 +3266,7 @@
         queueList.append(item);
       });
     };
-    const refreshState = () => {
+    refreshState = () => {
       var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r;
       const state = (_a = window.ZydkaPlayer) == null ? void 0 : _a.state();
       if (!state) return;
@@ -3075,9 +3283,11 @@
       title.textContent = renderText((_p = displayTrack == null ? void 0 : displayTrack.title) != null ? _p : fallbackDisplayTrack.title);
       artist.textContent = renderText((_q = displayTrack == null ? void 0 : displayTrack.artist) != null ? _q : fallbackDisplayTrack.artist);
       coverFallback.textContent = getCoverLabel(displayTrack != null ? displayTrack : fallbackDisplayTrack);
-      if ((displayTrack == null ? void 0 : displayTrack.cover) && !failedCoverUrls.has(displayTrack.cover)) {
-        coverImage.src = displayTrack.cover;
-        coverImage.dataset.coverSrc = displayTrack.cover;
+      requestEmbeddedCover(displayTrack);
+      const displayCoverUrl = getDisplayCoverUrl(displayTrack);
+      if (displayCoverUrl && !failedCoverUrls.has(displayCoverUrl)) {
+        coverImage.src = displayCoverUrl;
+        coverImage.dataset.coverSrc = displayCoverUrl;
         coverImage.hidden = false;
         coverFallback.hidden = true;
       } else {
@@ -3212,6 +3422,7 @@
     console.log("[Zydka Player] Bridge initialized - window.ZydkaPlayer ready.");
   }
   document.addEventListener("DOMContentLoaded", bootstrap);
+  window.addEventListener("beforeunload", revokeEmbeddedCoverCache, { once: true });
 })();
 /*! Bundled license information:
 

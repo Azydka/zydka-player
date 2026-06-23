@@ -2,11 +2,27 @@
 (() => {
   var __create = Object.create;
   var __defProp = Object.defineProperty;
+  var __defProps = Object.defineProperties;
   var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+  var __getOwnPropDescs = Object.getOwnPropertyDescriptors;
   var __getOwnPropNames = Object.getOwnPropertyNames;
+  var __getOwnPropSymbols = Object.getOwnPropertySymbols;
   var __getProtoOf = Object.getPrototypeOf;
   var __hasOwnProp = Object.prototype.hasOwnProperty;
+  var __propIsEnum = Object.prototype.propertyIsEnumerable;
   var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+  var __spreadValues = (a, b) => {
+    for (var prop in b || (b = {}))
+      if (__hasOwnProp.call(b, prop))
+        __defNormalProp(a, prop, b[prop]);
+    if (__getOwnPropSymbols)
+      for (var prop of __getOwnPropSymbols(b)) {
+        if (__propIsEnum.call(b, prop))
+          __defNormalProp(a, prop, b[prop]);
+      }
+    return a;
+  };
+  var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
   var __commonJS = (cb, mod) => function __require() {
     return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
   };
@@ -2279,22 +2295,22 @@
       });
       howl.on("load", () => {
         this.setStatus("ready");
-        this.emit("loaded", { track, duration: howl.duration() });
+        this.emit("loaded", { track, duration: this.getDuration() });
       });
       howl.on("play", () => {
         this.setStatus("playing");
-        this.emit("playing", { position: this.safeSeek() });
+        this.emit("playing", { position: this.getCurrentTime() });
       });
       howl.on("pause", () => {
         this.setStatus("paused");
-        this.emit("paused", { position: this.safeSeek() });
+        this.emit("paused", { position: this.getCurrentTime() });
       });
       howl.on("end", () => {
         this.setStatus("ended");
         this.emit("ended", { track });
       });
       howl.on("seek", () => {
-        this.emit("seeked", { position: this.safeSeek() });
+        this.emit("seeked", { position: this.getCurrentTime() });
       });
       howl.on("loaderror", (_id, err) => {
         this.handleError("Impossible de lire ce morceau (load): " + String(err));
@@ -2318,13 +2334,20 @@
       this.howl.stop();
       this.setStatus("ready");
     }
-    seek(positionSeconds) {
+    getCurrentTime() {
+      return this.safeSeek();
+    }
+    getDuration() {
       if (!this.howl) return 0;
-      if (positionSeconds === void 0) {
-        return this.safeSeek();
-      }
-      const clamped = Math.max(0, positionSeconds);
+      const duration = this.howl.duration();
+      return Number.isFinite(duration) ? duration : 0;
+    }
+    seek(seconds) {
+      if (!this.howl) return 0;
+      const duration = this.getDuration();
+      const clamped = Math.max(0, duration > 0 ? Math.min(seconds, duration) : seconds);
       this.howl.seek(clamped);
+      this.emit("seeked", { position: clamped });
       return clamped;
     }
     setVolume(volume) {
@@ -2337,8 +2360,8 @@
       return {
         status: this.status,
         currentTrack: this.currentTrack,
-        position: this.safeSeek(),
-        duration: this.howl ? this.howl.duration() : 0,
+        position: this.getCurrentTime(),
+        duration: this.getDuration(),
         volume: this.volume,
         error: this.errorMessage
       };
@@ -2379,7 +2402,7 @@
     safeSeek() {
       if (!this.howl) return 0;
       const position = this.howl.seek();
-      return typeof position === "number" ? position : 0;
+      return typeof position === "number" && Number.isFinite(position) ? position : 0;
     }
     emit(event, payload) {
       this.listeners[event].forEach((listener) => {
@@ -2423,29 +2446,49 @@
 
   // ../../packages/player-store/src/store.ts
   var audioEngine = new AudioEngine();
-  audioEngine.on("loaded", () => {
+  function syncTimeline() {
+    usePlayerStore.setState({
+      position: audioEngine.getCurrentTime(),
+      duration: audioEngine.getDuration()
+    });
+  }
+  audioEngine.on("loaded", ({ duration }) => {
     usePlayerStore.setState({
       status: "ready",
+      duration,
+      position: 0,
       error: null
     });
   });
-  audioEngine.on("playing", () => {
+  audioEngine.on("playing", ({ position }) => {
     usePlayerStore.setState({
       status: "playing",
       isPlaying: true,
+      position,
+      duration: audioEngine.getDuration(),
       error: null
     });
   });
-  audioEngine.on("paused", () => {
+  audioEngine.on("paused", ({ position }) => {
     usePlayerStore.setState({
       status: "paused",
-      isPlaying: false
+      isPlaying: false,
+      position,
+      duration: audioEngine.getDuration()
     });
   });
   audioEngine.on("ended", () => {
     usePlayerStore.setState({
       status: "ended",
-      isPlaying: false
+      isPlaying: false,
+      position: audioEngine.getDuration(),
+      duration: audioEngine.getDuration()
+    });
+  });
+  audioEngine.on("seeked", ({ position }) => {
+    usePlayerStore.setState({
+      position,
+      duration: audioEngine.getDuration()
     });
   });
   audioEngine.on("error", ({ message }) => {
@@ -2459,6 +2502,8 @@
     currentTrack: null,
     status: "idle",
     isPlaying: false,
+    position: 0,
+    duration: 0,
     error: null,
     setCurrentTrack: (track) => {
       if (!track) {
@@ -2466,6 +2511,8 @@
           currentTrack: null,
           status: "idle",
           isPlaying: false,
+          position: 0,
+          duration: 0,
           error: null
         });
         return;
@@ -2474,6 +2521,8 @@
         currentTrack: track,
         status: "loading",
         isPlaying: false,
+        position: 0,
+        duration: 0,
         error: null
       });
       audioEngine.loadTrack(track);
@@ -2481,10 +2530,19 @@
     play: () => {
       if (!get().currentTrack) return;
       audioEngine.play();
+      syncTimeline();
     },
     pause: () => {
       audioEngine.pause();
-    }
+      syncTimeline();
+    },
+    seek: (seconds) => {
+      const position = audioEngine.seek(seconds);
+      syncTimeline();
+      return position;
+    },
+    getCurrentTime: () => audioEngine.getCurrentTime(),
+    getDuration: () => audioEngine.getDuration()
   }));
 
   // ../../packages/player-store/src/controller.ts
@@ -2498,8 +2556,21 @@
     pause() {
       usePlayerStore.getState().pause();
     },
+    seek(seconds) {
+      return usePlayerStore.getState().seek(seconds);
+    },
+    getCurrentTime() {
+      return usePlayerStore.getState().getCurrentTime();
+    },
+    getDuration() {
+      return usePlayerStore.getState().getDuration();
+    },
     state() {
-      return usePlayerStore.getState();
+      const state = usePlayerStore.getState();
+      return __spreadProps(__spreadValues({}, state), {
+        position: state.getCurrentTime(),
+        duration: state.getDuration()
+      });
     }
   };
 
@@ -2511,6 +2582,15 @@
     }
     static pause() {
       PlayerController.pause();
+    }
+    static seek(seconds) {
+      return PlayerController.seek(seconds);
+    }
+    static getCurrentTime() {
+      return PlayerController.getCurrentTime();
+    }
+    static getDuration() {
+      return PlayerController.getDuration();
     }
     static state() {
       return PlayerController.state();
@@ -2553,6 +2633,13 @@
   function renderText(value) {
     return String(value != null ? value : "");
   }
+  function formatTime(seconds) {
+    if (!Number.isFinite(seconds) || seconds <= 0) return "0:00";
+    const totalSeconds = Math.floor(seconds);
+    const minutes = Math.floor(totalSeconds / 60);
+    const remainingSeconds = totalSeconds % 60;
+    return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
+  }
   function renderTestPlayer(root, track) {
     root.innerHTML = "";
     const card = document.createElement("div");
@@ -2576,6 +2663,25 @@
     pauseButton.className = "zydka-player-button zydka-player-button-secondary";
     pauseButton.type = "button";
     pauseButton.textContent = "Pause";
+    const timeline = document.createElement("div");
+    timeline.className = "zydka-player-timeline";
+    const currentTime = document.createElement("span");
+    currentTime.className = "zydka-player-time";
+    currentTime.textContent = "0:00";
+    const progress = document.createElement("button");
+    progress.className = "zydka-player-progress";
+    progress.type = "button";
+    progress.setAttribute("aria-label", "Seek");
+    progress.setAttribute("aria-valuemin", "0");
+    progress.setAttribute("aria-valuemax", "100");
+    progress.setAttribute("aria-valuenow", "0");
+    progress.setAttribute("role", "slider");
+    const progressFill = document.createElement("span");
+    progressFill.className = "zydka-player-progress-fill";
+    progress.append(progressFill);
+    const duration = document.createElement("span");
+    duration.className = "zydka-player-time";
+    duration.textContent = "0:00";
     const status = document.createElement("p");
     status.className = "zydka-player-status";
     status.append("Status: ");
@@ -2586,14 +2692,22 @@
     error.className = "zydka-player-error";
     error.hidden = true;
     actions.append(playButton, pauseButton);
-    card.append(eyebrow, title, artist, actions, status, error);
+    timeline.append(currentTime, progress, duration);
+    card.append(eyebrow, title, artist, actions, timeline, status, error);
     root.append(card);
     const refreshState = () => {
-      var _a, _b;
+      var _a, _b, _c, _d, _e, _f;
       const state = (_a = window.ZydkaPlayer) == null ? void 0 : _a.state();
       if (!state) return;
+      const position = (_c = (_b = window.ZydkaPlayer) == null ? void 0 : _b.getCurrentTime()) != null ? _c : state.position;
+      const trackDuration = (_e = (_d = window.ZydkaPlayer) == null ? void 0 : _d.getDuration()) != null ? _e : state.duration;
+      const progressPercent = trackDuration > 0 ? Math.min(100, position / trackDuration * 100) : 0;
       statusValue.textContent = state.status;
-      error.textContent = (_b = state.error) != null ? _b : "";
+      currentTime.textContent = formatTime(position);
+      duration.textContent = formatTime(trackDuration);
+      progressFill.style.width = `${progressPercent}%`;
+      progress.setAttribute("aria-valuenow", String(Math.round(progressPercent)));
+      error.textContent = (_f = state.error) != null ? _f : "";
       error.hidden = !state.error;
     };
     playButton.addEventListener("click", () => {
@@ -2606,8 +2720,17 @@
       (_a = window.ZydkaPlayer) == null ? void 0 : _a.pause();
       refreshState();
     });
+    progress.addEventListener("click", (event) => {
+      var _a, _b, _c;
+      const trackDuration = (_b = (_a = window.ZydkaPlayer) == null ? void 0 : _a.getDuration()) != null ? _b : 0;
+      if (trackDuration <= 0) return;
+      const rect = progress.getBoundingClientRect();
+      const ratio = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
+      (_c = window.ZydkaPlayer) == null ? void 0 : _c.seek(trackDuration * ratio);
+      refreshState();
+    });
     refreshState();
-    window.setInterval(refreshState, 500);
+    window.setInterval(refreshState, 250);
   }
   function bootstrap() {
     const root = document.getElementById("zydka-player-root");
@@ -2620,9 +2743,12 @@
         WordPressBridge.play(normalizedTrack);
       },
       pause: () => WordPressBridge.pause(),
+      seek: (seconds) => WordPressBridge.seek(seconds),
+      getCurrentTime: () => WordPressBridge.getCurrentTime(),
+      getDuration: () => WordPressBridge.getDuration(),
       state: () => {
-        const { currentTrack, status, isPlaying, error } = WordPressBridge.state();
-        return { currentTrack, status, isPlaying, error };
+        const { currentTrack, status, isPlaying, position, duration, error } = WordPressBridge.state();
+        return { currentTrack, status, isPlaying, position, duration, error };
       }
     };
     renderTestPlayer(root, shortcodeTrack);

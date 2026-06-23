@@ -14,7 +14,25 @@ export const PlayerController = {
     usePlayerStore.getState().pause();
   },
 
+  seek(seconds: number) {
+    return usePlayerStore.getState().seek(seconds);
+  },
+
+  getCurrentTime() {
+    return usePlayerStore.getState().getCurrentTime();
+  },
+
+  getDuration() {
+    return usePlayerStore.getState().getDuration();
+  },
+
   state() {
-    return usePlayerStore.getState();
+    const state = usePlayerStore.getState();
+
+    return {
+      ...state,
+      position: state.getCurrentTime(),
+      duration: state.getDuration(),
+    };
   },
 };

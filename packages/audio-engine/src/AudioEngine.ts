@@ -1,4 +1,4 @@
-﻿import { Howl } from "howler";
+import { Howl } from "howler";
 import type {
   AudioEngineEvent,
   AudioEngineEventPayload,
@@ -52,17 +52,17 @@ export class AudioEngine {
 
     howl.on("load", () => {
       this.setStatus("ready");
-      this.emit("loaded", { track, duration: howl.duration() });
+      this.emit("loaded", { track, duration: this.getDuration() });
     });
 
     howl.on("play", () => {
       this.setStatus("playing");
-      this.emit("playing", { position: this.safeSeek() });
+      this.emit("playing", { position: this.getCurrentTime() });
     });
 
     howl.on("pause", () => {
       this.setStatus("paused");
-      this.emit("paused", { position: this.safeSeek() });
+      this.emit("paused", { position: this.getCurrentTime() });
     });
 
     howl.on("end", () => {
@@ -71,7 +71,7 @@ export class AudioEngine {
     });
 
     howl.on("seek", () => {
-      this.emit("seeked", { position: this.safeSeek() });
+      this.emit("seeked", { position: this.getCurrentTime() });
     });
 
     howl.on("loaderror", (_id, err) => {
@@ -102,15 +102,26 @@ export class AudioEngine {
     this.setStatus("ready");
   }
 
-  seek(positionSeconds?: number): number {
+  getCurrentTime(): number {
+    return this.safeSeek();
+  }
+
+  getDuration(): number {
     if (!this.howl) return 0;
 
-    if (positionSeconds === undefined) {
-      return this.safeSeek();
-    }
+    const duration = this.howl.duration();
+    return Number.isFinite(duration) ? duration : 0;
+  }
 
-    const clamped = Math.max(0, positionSeconds);
+  seek(seconds: number): number {
+    if (!this.howl) return 0;
+
+    const duration = this.getDuration();
+    const clamped = Math.max(0, duration > 0 ? Math.min(seconds, duration) : seconds);
+
     this.howl.seek(clamped);
+    this.emit("seeked", { position: clamped });
+
     return clamped;
   }
 
@@ -126,8 +137,8 @@ export class AudioEngine {
     return {
       status: this.status,
       currentTrack: this.currentTrack,
-      position: this.safeSeek(),
-      duration: this.howl ? this.howl.duration() : 0,
+      position: this.getCurrentTime(),
+      duration: this.getDuration(),
       volume: this.volume,
       error: this.errorMessage,
     };
@@ -184,7 +195,7 @@ export class AudioEngine {
     if (!this.howl) return 0;
 
     const position = this.howl.seek();
-    return typeof position === "number" ? position : 0;
+    return typeof position === "number" && Number.isFinite(position) ? position : 0;
   }
 
   private emit<E extends AudioEngineEvent>(

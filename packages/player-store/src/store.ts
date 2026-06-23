@@ -4,25 +4,38 @@ import type { IPlayerState, ITrack } from "./types";
 
 const audioEngine = new AudioEngine();
 
-audioEngine.on("loaded", () => {
+function syncTimeline(): void {
+  usePlayerStore.setState({
+    position: audioEngine.getCurrentTime(),
+    duration: audioEngine.getDuration(),
+  });
+}
+
+audioEngine.on("loaded", ({ duration }) => {
   usePlayerStore.setState({
     status: "ready",
+    duration,
+    position: 0,
     error: null,
   });
 });
 
-audioEngine.on("playing", () => {
+audioEngine.on("playing", ({ position }) => {
   usePlayerStore.setState({
     status: "playing",
     isPlaying: true,
+    position,
+    duration: audioEngine.getDuration(),
     error: null,
   });
 });
 
-audioEngine.on("paused", () => {
+audioEngine.on("paused", ({ position }) => {
   usePlayerStore.setState({
     status: "paused",
     isPlaying: false,
+    position,
+    duration: audioEngine.getDuration(),
   });
 });
 
@@ -30,6 +43,15 @@ audioEngine.on("ended", () => {
   usePlayerStore.setState({
     status: "ended",
     isPlaying: false,
+    position: audioEngine.getDuration(),
+    duration: audioEngine.getDuration(),
+  });
+});
+
+audioEngine.on("seeked", ({ position }) => {
+  usePlayerStore.setState({
+    position,
+    duration: audioEngine.getDuration(),
   });
 });
 
@@ -45,6 +67,8 @@ export const usePlayerStore = createStore<IPlayerState>((set, get) => ({
   currentTrack: null,
   status: "idle",
   isPlaying: false,
+  position: 0,
+  duration: 0,
   error: null,
 
   setCurrentTrack: (track: ITrack | null) => {
@@ -53,6 +77,8 @@ export const usePlayerStore = createStore<IPlayerState>((set, get) => ({
         currentTrack: null,
         status: "idle",
         isPlaying: false,
+        position: 0,
+        duration: 0,
         error: null,
       });
 
@@ -63,6 +89,8 @@ export const usePlayerStore = createStore<IPlayerState>((set, get) => ({
       currentTrack: track,
       status: "loading",
       isPlaying: false,
+      position: 0,
+      duration: 0,
       error: null,
     });
 
@@ -72,9 +100,21 @@ export const usePlayerStore = createStore<IPlayerState>((set, get) => ({
   play: () => {
     if (!get().currentTrack) return;
     audioEngine.play();
+    syncTimeline();
   },
 
   pause: () => {
     audioEngine.pause();
+    syncTimeline();
   },
+
+  seek: (seconds: number) => {
+    const position = audioEngine.seek(seconds);
+    syncTimeline();
+    return position;
+  },
+
+  getCurrentTime: () => audioEngine.getCurrentTime(),
+
+  getDuration: () => audioEngine.getDuration(),
 }));

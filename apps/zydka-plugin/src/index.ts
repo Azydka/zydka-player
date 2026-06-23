@@ -21,12 +21,17 @@ interface ZydkaPlayerState {
   currentTrack: ZydkaTrack | null;
   status: 'idle' | 'loading' | 'ready' | 'playing' | 'paused' | 'ended' | 'error';
   isPlaying: boolean;
+  position: number;
+  duration: number;
   error: string | null;
 }
 
 interface ZydkaPlayerAPI {
   play: (track: ZydkaTrackInput) => void;
   pause: () => void;
+  seek: (seconds: number) => number;
+  getCurrentTime: () => number;
+  getDuration: () => number;
   state: () => ZydkaPlayerState;
 }
 
@@ -76,6 +81,16 @@ function renderText(value: string | number | undefined): string {
   return String(value ?? '');
 }
 
+function formatTime(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds <= 0) return '0:00';
+
+  const totalSeconds = Math.floor(seconds);
+  const minutes = Math.floor(totalSeconds / 60);
+  const remainingSeconds = totalSeconds % 60;
+
+  return `${minutes}:${String(remainingSeconds).padStart(2, '0')}`;
+}
+
 function renderTestPlayer(root: HTMLElement, track: ZydkaTrackInput): void {
   root.innerHTML = '';
 
@@ -107,6 +122,30 @@ function renderTestPlayer(root: HTMLElement, track: ZydkaTrackInput): void {
   pauseButton.type = 'button';
   pauseButton.textContent = 'Pause';
 
+  const timeline = document.createElement('div');
+  timeline.className = 'zydka-player-timeline';
+
+  const currentTime = document.createElement('span');
+  currentTime.className = 'zydka-player-time';
+  currentTime.textContent = '0:00';
+
+  const progress = document.createElement('button');
+  progress.className = 'zydka-player-progress';
+  progress.type = 'button';
+  progress.setAttribute('aria-label', 'Seek');
+  progress.setAttribute('aria-valuemin', '0');
+  progress.setAttribute('aria-valuemax', '100');
+  progress.setAttribute('aria-valuenow', '0');
+  progress.setAttribute('role', 'slider');
+
+  const progressFill = document.createElement('span');
+  progressFill.className = 'zydka-player-progress-fill';
+  progress.append(progressFill);
+
+  const duration = document.createElement('span');
+  duration.className = 'zydka-player-time';
+  duration.textContent = '0:00';
+
   const status = document.createElement('p');
   status.className = 'zydka-player-status';
   status.append('Status: ');
@@ -120,7 +159,8 @@ function renderTestPlayer(root: HTMLElement, track: ZydkaTrackInput): void {
   error.hidden = true;
 
   actions.append(playButton, pauseButton);
-  card.append(eyebrow, title, artist, actions, status, error);
+  timeline.append(currentTime, progress, duration);
+  card.append(eyebrow, title, artist, actions, timeline, status, error);
   root.append(card);
 
   const refreshState = (): void => {
@@ -128,7 +168,15 @@ function renderTestPlayer(root: HTMLElement, track: ZydkaTrackInput): void {
 
     if (!state) return;
 
+    const position = window.ZydkaPlayer?.getCurrentTime() ?? state.position;
+    const trackDuration = window.ZydkaPlayer?.getDuration() ?? state.duration;
+    const progressPercent = trackDuration > 0 ? Math.min(100, (position / trackDuration) * 100) : 0;
+
     statusValue.textContent = state.status;
+    currentTime.textContent = formatTime(position);
+    duration.textContent = formatTime(trackDuration);
+    progressFill.style.width = `${progressPercent}%`;
+    progress.setAttribute('aria-valuenow', String(Math.round(progressPercent)));
     error.textContent = state.error ?? '';
     error.hidden = !state.error;
   };
@@ -143,8 +191,20 @@ function renderTestPlayer(root: HTMLElement, track: ZydkaTrackInput): void {
     refreshState();
   });
 
+  progress.addEventListener('click', (event) => {
+    const trackDuration = window.ZydkaPlayer?.getDuration() ?? 0;
+
+    if (trackDuration <= 0) return;
+
+    const rect = progress.getBoundingClientRect();
+    const ratio = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
+
+    window.ZydkaPlayer?.seek(trackDuration * ratio);
+    refreshState();
+  });
+
   refreshState();
-  window.setInterval(refreshState, 500);
+  window.setInterval(refreshState, 250);
 }
 
 function bootstrap(): void {
@@ -163,9 +223,12 @@ function bootstrap(): void {
       WordPressBridge.play(normalizedTrack);
     },
     pause: () => WordPressBridge.pause(),
+    seek: (seconds: number) => WordPressBridge.seek(seconds),
+    getCurrentTime: () => WordPressBridge.getCurrentTime(),
+    getDuration: () => WordPressBridge.getDuration(),
     state: () => {
-      const { currentTrack, status, isPlaying, error } = WordPressBridge.state();
-      return { currentTrack, status, isPlaying, error };
+      const { currentTrack, status, isPlaying, position, duration, error } = WordPressBridge.state();
+      return { currentTrack, status, isPlaying, position, duration, error };
     },
   };
 

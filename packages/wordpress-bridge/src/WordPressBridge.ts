@@ -11,6 +11,18 @@ export class WordPressBridge {
     PlayerController.pause();
   }
 
+  static seek(seconds: number) {
+    return PlayerController.seek(seconds);
+  }
+
+  static getCurrentTime() {
+    return PlayerController.getCurrentTime();
+  }
+
+  static getDuration() {
+    return PlayerController.getDuration();
+  }
+
   static state() {
     return PlayerController.state();
   }

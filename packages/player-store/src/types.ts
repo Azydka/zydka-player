@@ -10,6 +10,8 @@ export interface IPlayerState {
   isPlaying: boolean;
   position: number;
   duration: number;
+  volume: number;
+  muted: boolean;
   error: string | null;
 
   setCurrentTrack: (track: ITrack | null) => void;
@@ -24,4 +26,9 @@ export interface IPlayerState {
   seek: (seconds: number) => number;
   getCurrentTime: () => number;
   getDuration: () => number;
+  setVolume: (volume: number) => number;
+  getVolume: () => number;
+  mute: () => void;
+  unmute: () => void;
+  isMuted: () => boolean;
 }

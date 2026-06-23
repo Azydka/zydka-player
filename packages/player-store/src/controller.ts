@@ -50,6 +50,26 @@ export const PlayerController = {
     return usePlayerStore.getState().getDuration();
   },
 
+  setVolume(volume: number) {
+    return usePlayerStore.getState().setVolume(volume);
+  },
+
+  getVolume() {
+    return usePlayerStore.getState().getVolume();
+  },
+
+  mute() {
+    usePlayerStore.getState().mute();
+  },
+
+  unmute() {
+    usePlayerStore.getState().unmute();
+  },
+
+  isMuted() {
+    return usePlayerStore.getState().isMuted();
+  },
+
   state() {
     const state = usePlayerStore.getState();
 
@@ -57,6 +77,8 @@ export const PlayerController = {
       ...state,
       position: state.getCurrentTime(),
       duration: state.getDuration(),
+      volume: state.getVolume(),
+      muted: state.isMuted(),
     };
   },
 };

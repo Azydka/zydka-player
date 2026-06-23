@@ -21,6 +21,7 @@ export interface AudioEngineState {
   position: number;
   duration: number;
   volume: number;
+  muted: boolean;
   error: string | null;
 }
 

@@ -47,6 +47,26 @@ export class WordPressBridge {
     return PlayerController.getDuration();
   }
 
+  static setVolume(volume: number) {
+    return PlayerController.setVolume(volume);
+  }
+
+  static getVolume() {
+    return PlayerController.getVolume();
+  }
+
+  static mute() {
+    PlayerController.mute();
+  }
+
+  static unmute() {
+    PlayerController.unmute();
+  }
+
+  static isMuted() {
+    return PlayerController.isMuted();
+  }
+
   static state() {
     return PlayerController.state();
   }

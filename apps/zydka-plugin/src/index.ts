@@ -25,6 +25,8 @@ interface ZydkaPlayerState {
   isPlaying: boolean;
   position: number;
   duration: number;
+  volume: number;
+  muted: boolean;
   error: string | null;
 }
 
@@ -40,6 +42,11 @@ interface ZydkaPlayerAPI {
   playAt: (index: number) => boolean;
   next: () => boolean;
   previous: () => boolean;
+  setVolume: (value: number) => number;
+  getVolume: () => number;
+  mute: () => void;
+  unmute: () => void;
+  isMuted: () => boolean;
   state: () => ZydkaPlayerState;
 }
 
@@ -215,6 +222,33 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
 
   timeline.append(currentTime, progress, duration);
 
+  const volumeControl = document.createElement('div');
+  volumeControl.className = 'zydka-player-volume';
+
+  const muteButton = document.createElement('button');
+  muteButton.className = 'zydka-player-button zydka-player-mute-button';
+  muteButton.type = 'button';
+  muteButton.textContent = 'Mute';
+  muteButton.setAttribute('aria-label', 'Mute');
+
+  const volumeLabel = document.createElement('label');
+  volumeLabel.className = 'zydka-player-volume-label';
+  volumeLabel.textContent = 'Volume';
+
+  const volumeSlider = document.createElement('input');
+  volumeSlider.className = 'zydka-player-volume-slider';
+  volumeSlider.type = 'range';
+  volumeSlider.min = '0';
+  volumeSlider.max = '1';
+  volumeSlider.step = '0.01';
+  volumeSlider.value = '1';
+  volumeSlider.setAttribute('aria-label', 'Volume');
+
+  const volumeValue = document.createElement('span');
+  volumeValue.className = 'zydka-player-volume-value';
+  volumeValue.textContent = '100%';
+
+  volumeControl.append(muteButton, volumeLabel, volumeSlider, volumeValue);
   const footer = document.createElement('div');
   footer.className = 'zydka-player-footer';
 
@@ -223,7 +257,7 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
   error.hidden = true;
 
   footer.append(status, error);
-  card.append(header, actions, timeline, footer);
+  card.append(header, actions, timeline, volumeControl, footer);
   root.append(card);
 
   const refreshState = (): void => {
@@ -238,6 +272,8 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
     const trackDuration = window.ZydkaPlayer?.getDuration() ?? state.duration;
     const progressPercent = trackDuration > 0 ? Math.min(100, (position / trackDuration) * 100) : 0;
     const displayIndex = queue.length > 0 ? Math.max(0, currentIndex) + 1 : 0;
+    const volume = window.ZydkaPlayer?.getVolume() ?? state.volume;
+    const muted = window.ZydkaPlayer?.isMuted() ?? state.muted;
 
     card.className = `zydka-player-card zydka-player-state-${state.status}`;
     title.textContent = renderText(displayTrack?.title ?? fallbackDisplayTrack.title);
@@ -252,6 +288,10 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
     duration.textContent = formatTime(trackDuration);
     progressFill.style.width = `${progressPercent}%`;
     progress.setAttribute('aria-valuenow', String(Math.round(progressPercent)));
+    volumeSlider.value = String(volume);
+    volumeValue.textContent = `${Math.round(volume * 100)}%`;
+    muteButton.textContent = muted ? 'Unmute' : 'Mute';
+    muteButton.setAttribute('aria-label', muted ? 'Unmute' : 'Mute');
     error.textContent = state.error ?? '';
     error.hidden = !state.error;
   };
@@ -276,6 +316,28 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
 
   nextButton.addEventListener('click', () => {
     window.ZydkaPlayer?.next();
+    refreshState();
+  });
+
+  muteButton.addEventListener('click', () => {
+    if (window.ZydkaPlayer?.isMuted()) {
+      window.ZydkaPlayer.unmute();
+    } else {
+      window.ZydkaPlayer?.mute();
+    }
+
+    refreshState();
+  });
+
+  volumeSlider.addEventListener('input', () => {
+    const nextVolume = Number(volumeSlider.value);
+
+    window.ZydkaPlayer?.setVolume(nextVolume);
+
+    if (nextVolume > 0 && window.ZydkaPlayer?.isMuted()) {
+      window.ZydkaPlayer.unmute();
+    }
+
     refreshState();
   });
 
@@ -320,9 +382,14 @@ function bootstrap(): void {
     playAt: (index: number) => WordPressBridge.playAt(index),
     next: () => WordPressBridge.next(),
     previous: () => WordPressBridge.previous(),
+    setVolume: (value: number) => WordPressBridge.setVolume(value),
+    getVolume: () => WordPressBridge.getVolume(),
+    mute: () => WordPressBridge.mute(),
+    unmute: () => WordPressBridge.unmute(),
+    isMuted: () => WordPressBridge.isMuted(),
     state: () => {
-      const { currentTrack, currentIndex, queue, status, isPlaying, position, duration, error } = WordPressBridge.state();
-      return { currentTrack, currentIndex, queue, status, isPlaying, position, duration, error };
+      const { currentTrack, currentIndex, queue, status, isPlaying, position, duration, volume, muted, error } = WordPressBridge.state();
+      return { currentTrack, currentIndex, queue, status, isPlaying, position, duration, volume, muted, error };
     },
   };
 

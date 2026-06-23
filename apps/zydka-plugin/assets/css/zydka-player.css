@@ -112,7 +112,8 @@
 }
 
 .zydka-player-button:focus-visible,
-.zydka-player-progress:focus-visible {
+.zydka-player-progress:focus-visible,
+.zydka-player-volume-slider:focus-visible {
   outline: 2px solid #111111;
   outline-offset: 3px;
 }
@@ -175,6 +176,42 @@
   width: 0%;
   border-radius: inherit;
   background: #111111;
+}
+
+.zydka-player-volume {
+  display: grid;
+  grid-template-columns: auto auto minmax(120px, 1fr) 48px;
+  gap: 10px;
+  align-items: center;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #eeeeee;
+}
+
+.zydka-player-mute-button {
+  min-height: 36px;
+  padding: 8px 12px;
+  font-size: 12px;
+}
+
+.zydka-player-volume-label,
+.zydka-player-volume-value {
+  color: #555555;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.zydka-player-volume-value {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.zydka-player-volume-slider {
+  width: 100%;
+  min-width: 0;
+  accent-color: #111111;
+  cursor: pointer;
 }
 
 .zydka-player-footer {
@@ -242,12 +279,17 @@
     font-size: 20px;
   }
 
-  .zydka-player-actions {
+  .zydka-player-actions,
+  .zydka-player-volume {
     grid-template-columns: 1fr;
   }
 
   .zydka-player-button {
     width: 100%;
+  }
+
+  .zydka-player-volume-value {
+    text-align: left;
   }
 
   .zydka-player-timeline {

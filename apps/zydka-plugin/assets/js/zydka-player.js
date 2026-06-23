@@ -2266,6 +2266,8 @@
       __publicField(this, "status", "idle");
       __publicField(this, "errorMessage", null);
       __publicField(this, "volume");
+      __publicField(this, "previousVolume");
+      __publicField(this, "muted", false);
       __publicField(this, "formats");
       __publicField(this, "debug");
       __publicField(this, "listeners", {
@@ -2278,6 +2280,7 @@
       });
       var _a, _b;
       this.volume = _AudioEngine.clampVolume((_a = options.initialVolume) != null ? _a : 1);
+      this.previousVolume = this.volume > 0 ? this.volume : 1;
       this.formats = options.formats;
       this.debug = (_b = options.debug) != null ? _b : false;
     }
@@ -2293,6 +2296,7 @@
         volume: this.volume,
         preload: true
       });
+      howl.mute(this.muted);
       howl.on("load", () => {
         this.setStatus("ready");
         this.emit("loaded", { track, duration: this.getDuration() });
@@ -2352,9 +2356,37 @@
     }
     setVolume(volume) {
       this.volume = _AudioEngine.clampVolume(volume);
+      if (this.volume > 0) {
+        this.previousVolume = this.volume;
+      }
       if (this.howl) {
         this.howl.volume(this.volume);
       }
+      return this.volume;
+    }
+    getVolume() {
+      return this.volume;
+    }
+    mute() {
+      if (this.volume > 0) {
+        this.previousVolume = this.volume;
+      }
+      this.muted = true;
+      if (this.howl) {
+        this.howl.mute(true);
+      }
+    }
+    unmute() {
+      this.muted = false;
+      if (this.volume === 0) {
+        this.setVolume(this.previousVolume || 1);
+      }
+      if (this.howl) {
+        this.howl.mute(false);
+      }
+    }
+    isMuted() {
+      return this.muted;
     }
     getState() {
       return {
@@ -2363,6 +2395,7 @@
         position: this.getCurrentTime(),
         duration: this.getDuration(),
         volume: this.volume,
+        muted: this.muted,
         error: this.errorMessage
       };
     }
@@ -2452,6 +2485,12 @@
       duration: audioEngine.getDuration()
     });
   }
+  function syncVolume() {
+    usePlayerStore.setState({
+      volume: audioEngine.getVolume(),
+      muted: audioEngine.isMuted()
+    });
+  }
   function findTrackIndex(queue, track) {
     if (!track) return -1;
     return queue.findIndex((queuedTrack) => queuedTrack.id === track.id);
@@ -2461,6 +2500,8 @@
       status: "ready",
       duration,
       position: 0,
+      volume: audioEngine.getVolume(),
+      muted: audioEngine.isMuted(),
       error: null
     });
   });
@@ -2470,6 +2511,8 @@
       isPlaying: true,
       position,
       duration: audioEngine.getDuration(),
+      volume: audioEngine.getVolume(),
+      muted: audioEngine.isMuted(),
       error: null
     });
   });
@@ -2478,7 +2521,9 @@
       status: "paused",
       isPlaying: false,
       position,
-      duration: audioEngine.getDuration()
+      duration: audioEngine.getDuration(),
+      volume: audioEngine.getVolume(),
+      muted: audioEngine.isMuted()
     });
   });
   audioEngine.on("ended", () => {
@@ -2486,7 +2531,9 @@
       status: "ended",
       isPlaying: false,
       position: audioEngine.getDuration(),
-      duration: audioEngine.getDuration()
+      duration: audioEngine.getDuration(),
+      volume: audioEngine.getVolume(),
+      muted: audioEngine.isMuted()
     });
   });
   audioEngine.on("seeked", ({ position }) => {
@@ -2510,6 +2557,8 @@
     isPlaying: false,
     position: 0,
     duration: 0,
+    volume: audioEngine.getVolume(),
+    muted: audioEngine.isMuted(),
     error: null,
     setCurrentTrack: (track) => {
       if (!track) {
@@ -2520,6 +2569,8 @@
           isPlaying: false,
           position: 0,
           duration: 0,
+          volume: audioEngine.getVolume(),
+          muted: audioEngine.isMuted(),
           error: null
         });
         return;
@@ -2531,6 +2582,8 @@
         isPlaying: false,
         position: 0,
         duration: 0,
+        volume: audioEngine.getVolume(),
+        muted: audioEngine.isMuted(),
         error: null
       }));
       audioEngine.loadTrack(track);
@@ -2556,11 +2609,14 @@
         isPlaying: false,
         position: 0,
         duration: 0,
+        volume: audioEngine.getVolume(),
+        muted: audioEngine.isMuted(),
         error: null
       });
       audioEngine.loadTrack(track);
       audioEngine.play();
       syncTimeline();
+      syncVolume();
       return true;
     },
     next: () => {
@@ -2579,10 +2635,12 @@
       if (!get().currentTrack) return;
       audioEngine.play();
       syncTimeline();
+      syncVolume();
     },
     pause: () => {
       audioEngine.pause();
       syncTimeline();
+      syncVolume();
     },
     seek: (seconds) => {
       const position = audioEngine.seek(seconds);
@@ -2590,7 +2648,22 @@
       return position;
     },
     getCurrentTime: () => audioEngine.getCurrentTime(),
-    getDuration: () => audioEngine.getDuration()
+    getDuration: () => audioEngine.getDuration(),
+    setVolume: (volume) => {
+      const nextVolume = audioEngine.setVolume(volume);
+      syncVolume();
+      return nextVolume;
+    },
+    getVolume: () => audioEngine.getVolume(),
+    mute: () => {
+      audioEngine.mute();
+      syncVolume();
+    },
+    unmute: () => {
+      audioEngine.unmute();
+      syncVolume();
+    },
+    isMuted: () => audioEngine.isMuted()
   }));
 
   // ../../packages/player-store/src/controller.ts
@@ -2631,11 +2704,28 @@
     getDuration() {
       return usePlayerStore.getState().getDuration();
     },
+    setVolume(volume) {
+      return usePlayerStore.getState().setVolume(volume);
+    },
+    getVolume() {
+      return usePlayerStore.getState().getVolume();
+    },
+    mute() {
+      usePlayerStore.getState().mute();
+    },
+    unmute() {
+      usePlayerStore.getState().unmute();
+    },
+    isMuted() {
+      return usePlayerStore.getState().isMuted();
+    },
     state() {
       const state = usePlayerStore.getState();
       return __spreadProps(__spreadValues({}, state), {
         position: state.getCurrentTime(),
-        duration: state.getDuration()
+        duration: state.getDuration(),
+        volume: state.getVolume(),
+        muted: state.isMuted()
       });
     }
   };
@@ -2675,6 +2765,21 @@
     }
     static getDuration() {
       return PlayerController.getDuration();
+    }
+    static setVolume(volume) {
+      return PlayerController.setVolume(volume);
+    }
+    static getVolume() {
+      return PlayerController.getVolume();
+    }
+    static mute() {
+      PlayerController.mute();
+    }
+    static unmute() {
+      PlayerController.unmute();
+    }
+    static isMuted() {
+      return PlayerController.isMuted();
     }
     static state() {
       return PlayerController.state();
@@ -2811,16 +2916,38 @@
     duration.className = "zydka-player-time";
     duration.textContent = "0:00";
     timeline.append(currentTime, progress, duration);
+    const volumeControl = document.createElement("div");
+    volumeControl.className = "zydka-player-volume";
+    const muteButton = document.createElement("button");
+    muteButton.className = "zydka-player-button zydka-player-mute-button";
+    muteButton.type = "button";
+    muteButton.textContent = "Mute";
+    muteButton.setAttribute("aria-label", "Mute");
+    const volumeLabel = document.createElement("label");
+    volumeLabel.className = "zydka-player-volume-label";
+    volumeLabel.textContent = "Volume";
+    const volumeSlider = document.createElement("input");
+    volumeSlider.className = "zydka-player-volume-slider";
+    volumeSlider.type = "range";
+    volumeSlider.min = "0";
+    volumeSlider.max = "1";
+    volumeSlider.step = "0.01";
+    volumeSlider.value = "1";
+    volumeSlider.setAttribute("aria-label", "Volume");
+    const volumeValue = document.createElement("span");
+    volumeValue.className = "zydka-player-volume-value";
+    volumeValue.textContent = "100%";
+    volumeControl.append(muteButton, volumeLabel, volumeSlider, volumeValue);
     const footer = document.createElement("div");
     footer.className = "zydka-player-footer";
     const error = document.createElement("p");
     error.className = "zydka-player-error";
     error.hidden = true;
     footer.append(status, error);
-    card.append(header, actions, timeline, footer);
+    card.append(header, actions, timeline, volumeControl, footer);
     root.append(card);
     const refreshState = () => {
-      var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n;
+      var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r;
       const state = (_a = window.ZydkaPlayer) == null ? void 0 : _a.state();
       if (!state) return;
       const queue = (_c = (_b = window.ZydkaPlayer) == null ? void 0 : _b.getQueue()) != null ? _c : state.queue;
@@ -2830,9 +2957,11 @@
       const trackDuration = (_k = (_j = window.ZydkaPlayer) == null ? void 0 : _j.getDuration()) != null ? _k : state.duration;
       const progressPercent = trackDuration > 0 ? Math.min(100, position / trackDuration * 100) : 0;
       const displayIndex = queue.length > 0 ? Math.max(0, currentIndex) + 1 : 0;
+      const volume = (_m = (_l = window.ZydkaPlayer) == null ? void 0 : _l.getVolume()) != null ? _m : state.volume;
+      const muted = (_o = (_n = window.ZydkaPlayer) == null ? void 0 : _n.isMuted()) != null ? _o : state.muted;
       card.className = `zydka-player-card zydka-player-state-${state.status}`;
-      title.textContent = renderText((_l = displayTrack == null ? void 0 : displayTrack.title) != null ? _l : fallbackDisplayTrack.title);
-      artist.textContent = renderText((_m = displayTrack == null ? void 0 : displayTrack.artist) != null ? _m : fallbackDisplayTrack.artist);
+      title.textContent = renderText((_p = displayTrack == null ? void 0 : displayTrack.title) != null ? _p : fallbackDisplayTrack.title);
+      artist.textContent = renderText((_q = displayTrack == null ? void 0 : displayTrack.artist) != null ? _q : fallbackDisplayTrack.artist);
       trackCounter.textContent = `Track ${displayIndex} / ${queue.length}`;
       previousButton.disabled = currentIndex <= 0;
       nextButton.disabled = currentIndex >= queue.length - 1;
@@ -2843,7 +2972,11 @@
       duration.textContent = formatTime(trackDuration);
       progressFill.style.width = `${progressPercent}%`;
       progress.setAttribute("aria-valuenow", String(Math.round(progressPercent)));
-      error.textContent = (_n = state.error) != null ? _n : "";
+      volumeSlider.value = String(volume);
+      volumeValue.textContent = `${Math.round(volume * 100)}%`;
+      muteButton.textContent = muted ? "Unmute" : "Mute";
+      muteButton.setAttribute("aria-label", muted ? "Unmute" : "Mute");
+      error.textContent = (_r = state.error) != null ? _r : "";
       error.hidden = !state.error;
     };
     previousButton.addEventListener("click", () => {
@@ -2865,6 +2998,24 @@
     nextButton.addEventListener("click", () => {
       var _a;
       (_a = window.ZydkaPlayer) == null ? void 0 : _a.next();
+      refreshState();
+    });
+    muteButton.addEventListener("click", () => {
+      var _a, _b;
+      if ((_a = window.ZydkaPlayer) == null ? void 0 : _a.isMuted()) {
+        window.ZydkaPlayer.unmute();
+      } else {
+        (_b = window.ZydkaPlayer) == null ? void 0 : _b.mute();
+      }
+      refreshState();
+    });
+    volumeSlider.addEventListener("input", () => {
+      var _a, _b;
+      const nextVolume = Number(volumeSlider.value);
+      (_a = window.ZydkaPlayer) == null ? void 0 : _a.setVolume(nextVolume);
+      if (nextVolume > 0 && ((_b = window.ZydkaPlayer) == null ? void 0 : _b.isMuted())) {
+        window.ZydkaPlayer.unmute();
+      }
       refreshState();
     });
     progress.addEventListener("click", (event) => {
@@ -2900,9 +3051,14 @@
       playAt: (index) => WordPressBridge.playAt(index),
       next: () => WordPressBridge.next(),
       previous: () => WordPressBridge.previous(),
+      setVolume: (value) => WordPressBridge.setVolume(value),
+      getVolume: () => WordPressBridge.getVolume(),
+      mute: () => WordPressBridge.mute(),
+      unmute: () => WordPressBridge.unmute(),
+      isMuted: () => WordPressBridge.isMuted(),
       state: () => {
-        const { currentTrack, currentIndex, queue, status, isPlaying, position, duration, error } = WordPressBridge.state();
-        return { currentTrack, currentIndex, queue, status, isPlaying, position, duration, error };
+        const { currentTrack, currentIndex, queue, status, isPlaying, position, duration, volume, muted, error } = WordPressBridge.state();
+        return { currentTrack, currentIndex, queue, status, isPlaying, position, duration, volume, muted, error };
       }
     };
     const shortcodeQueue = readQueueFromRoot(root, shortcodeTrack);

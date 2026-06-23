@@ -15,6 +15,8 @@ export class AudioEngine {
   private status: AudioEngineStatus = "idle";
   private errorMessage: string | null = null;
   private volume: number;
+  private previousVolume: number;
+  private muted = false;
   private readonly formats?: string[];
   private readonly debug: boolean;
 
@@ -31,6 +33,7 @@ export class AudioEngine {
 
   constructor(options: AudioEngineOptions = {}) {
     this.volume = AudioEngine.clampVolume(options.initialVolume ?? 1);
+    this.previousVolume = this.volume > 0 ? this.volume : 1;
     this.formats = options.formats;
     this.debug = options.debug ?? false;
   }
@@ -49,6 +52,8 @@ export class AudioEngine {
       volume: this.volume,
       preload: true,
     });
+
+    howl.mute(this.muted);
 
     howl.on("load", () => {
       this.setStatus("ready");
@@ -125,12 +130,50 @@ export class AudioEngine {
     return clamped;
   }
 
-  setVolume(volume: number): void {
+  setVolume(volume: number): number {
     this.volume = AudioEngine.clampVolume(volume);
+
+    if (this.volume > 0) {
+      this.previousVolume = this.volume;
+    }
 
     if (this.howl) {
       this.howl.volume(this.volume);
     }
+
+    return this.volume;
+  }
+
+  getVolume(): number {
+    return this.volume;
+  }
+
+  mute(): void {
+    if (this.volume > 0) {
+      this.previousVolume = this.volume;
+    }
+
+    this.muted = true;
+
+    if (this.howl) {
+      this.howl.mute(true);
+    }
+  }
+
+  unmute(): void {
+    this.muted = false;
+
+    if (this.volume === 0) {
+      this.setVolume(this.previousVolume || 1);
+    }
+
+    if (this.howl) {
+      this.howl.mute(false);
+    }
+  }
+
+  isMuted(): boolean {
+    return this.muted;
   }
 
   getState(): AudioEngineState {
@@ -140,6 +183,7 @@ export class AudioEngine {
       position: this.getCurrentTime(),
       duration: this.getDuration(),
       volume: this.volume,
+      muted: this.muted,
       error: this.errorMessage,
     };
   }

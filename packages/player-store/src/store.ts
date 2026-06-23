@@ -11,6 +11,13 @@ function syncTimeline(): void {
   });
 }
 
+function syncVolume(): void {
+  usePlayerStore.setState({
+    volume: audioEngine.getVolume(),
+    muted: audioEngine.isMuted(),
+  });
+}
+
 function findTrackIndex(queue: ITrack[], track: ITrack | null): number {
   if (!track) return -1;
 
@@ -22,6 +29,8 @@ audioEngine.on("loaded", ({ duration }) => {
     status: "ready",
     duration,
     position: 0,
+    volume: audioEngine.getVolume(),
+    muted: audioEngine.isMuted(),
     error: null,
   });
 });
@@ -32,6 +41,8 @@ audioEngine.on("playing", ({ position }) => {
     isPlaying: true,
     position,
     duration: audioEngine.getDuration(),
+    volume: audioEngine.getVolume(),
+    muted: audioEngine.isMuted(),
     error: null,
   });
 });
@@ -42,6 +53,8 @@ audioEngine.on("paused", ({ position }) => {
     isPlaying: false,
     position,
     duration: audioEngine.getDuration(),
+    volume: audioEngine.getVolume(),
+    muted: audioEngine.isMuted(),
   });
 });
 
@@ -51,6 +64,8 @@ audioEngine.on("ended", () => {
     isPlaying: false,
     position: audioEngine.getDuration(),
     duration: audioEngine.getDuration(),
+    volume: audioEngine.getVolume(),
+    muted: audioEngine.isMuted(),
   });
 });
 
@@ -77,6 +92,8 @@ export const usePlayerStore = createStore<IPlayerState>((set, get) => ({
   isPlaying: false,
   position: 0,
   duration: 0,
+  volume: audioEngine.getVolume(),
+  muted: audioEngine.isMuted(),
   error: null,
 
   setCurrentTrack: (track: ITrack | null) => {
@@ -88,6 +105,8 @@ export const usePlayerStore = createStore<IPlayerState>((set, get) => ({
         isPlaying: false,
         position: 0,
         duration: 0,
+        volume: audioEngine.getVolume(),
+        muted: audioEngine.isMuted(),
         error: null,
       });
 
@@ -101,6 +120,8 @@ export const usePlayerStore = createStore<IPlayerState>((set, get) => ({
       isPlaying: false,
       position: 0,
       duration: 0,
+      volume: audioEngine.getVolume(),
+      muted: audioEngine.isMuted(),
       error: null,
     }));
 
@@ -134,12 +155,15 @@ export const usePlayerStore = createStore<IPlayerState>((set, get) => ({
       isPlaying: false,
       position: 0,
       duration: 0,
+      volume: audioEngine.getVolume(),
+      muted: audioEngine.isMuted(),
       error: null,
     });
 
     audioEngine.loadTrack(track);
     audioEngine.play();
     syncTimeline();
+    syncVolume();
 
     return true;
   },
@@ -166,11 +190,13 @@ export const usePlayerStore = createStore<IPlayerState>((set, get) => ({
     if (!get().currentTrack) return;
     audioEngine.play();
     syncTimeline();
+    syncVolume();
   },
 
   pause: () => {
     audioEngine.pause();
     syncTimeline();
+    syncVolume();
   },
 
   seek: (seconds: number) => {
@@ -182,4 +208,24 @@ export const usePlayerStore = createStore<IPlayerState>((set, get) => ({
   getCurrentTime: () => audioEngine.getCurrentTime(),
 
   getDuration: () => audioEngine.getDuration(),
+
+  setVolume: (volume: number) => {
+    const nextVolume = audioEngine.setVolume(volume);
+    syncVolume();
+    return nextVolume;
+  },
+
+  getVolume: () => audioEngine.getVolume(),
+
+  mute: () => {
+    audioEngine.mute();
+    syncVolume();
+  },
+
+  unmute: () => {
+    audioEngine.unmute();
+    syncVolume();
+  },
+
+  isMuted: () => audioEngine.isMuted(),
 }));

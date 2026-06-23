@@ -111,17 +111,17 @@ Prochaine etape recommandee : remplacer le morceau de test code en dur par des a
 
 ### 23/06/2026 - louis94.com - Navigation multi-tracks
 
-Validation reussie de la navigation multi-tracks du Zydka Player sur louis94.com.
+Validation réussie de la navigation multi-tracks du Zydka Player sur louis94.com.
 
-Resultat :
+Résultat :
 
 - Queue interne fonctionnelle.
-- Boutons Previous / Next operationnels.
-- Etat synchronise avec `window.ZydkaPlayer.state()`.
-- Progression conservee.
+- Boutons Previous / Next opérationnels.
+- État synchronisé avec `window.ZydkaPlayer.state()`.
+- Progression conservée.
 - `window.ZydkaPlayer.getQueue()` fonctionnel.
 - `window.ZydkaPlayer.getCurrentIndex()` fonctionnel.
-- Lecture, pause, progression et seek toujours operationnels.
+- Lecture, pause, progression et seek toujours opérationnels.
 
 ## Contraintes
 

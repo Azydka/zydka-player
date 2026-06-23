@@ -108,6 +108,21 @@ Prochaine etape recommandee : remplacer le morceau de test code en dur par des a
 ```text
 [zydka_player title="New York Shit" artist="Louis94" src="https://...mp3"]
 ```
+
+### 23/06/2026 - louis94.com - Navigation multi-tracks
+
+Validation reussie de la navigation multi-tracks du Zydka Player sur louis94.com.
+
+Resultat :
+
+- Queue interne fonctionnelle.
+- Boutons Previous / Next operationnels.
+- Etat synchronise avec `window.ZydkaPlayer.state()`.
+- Progression conservee.
+- `window.ZydkaPlayer.getQueue()` fonctionnel.
+- `window.ZydkaPlayer.getCurrentIndex()` fonctionnel.
+- Lecture, pause, progression et seek toujours operationnels.
+
 ## Contraintes
 
 - Plugin autonome, sans dépendance à un thème WordPress.

@@ -3258,12 +3258,7 @@
     nextButton.className = "zydka-player-button zydka-player-nav-button";
     nextButton.type = "button";
     nextButton.textContent = "Next";
-    const queueButton = document.createElement("button");
-    queueButton.className = "zydka-player-button zydka-player-queue-button";
-    queueButton.type = "button";
-    queueButton.textContent = "Queue";
-    queueButton.setAttribute("aria-expanded", "false");
-    actions.append(previousButton, toggleButton, nextButton, queueButton);
+    actions.append(previousButton, toggleButton, nextButton);
     const timeline = document.createElement("div");
     timeline.className = "zydka-player-timeline";
     const currentTime = document.createElement("span");
@@ -3306,37 +3301,30 @@
     volumeValue.className = "zydka-player-volume-value";
     volumeValue.textContent = "100%";
     volumeControl.append(muteButton, volumeLabel, volumeSlider, volumeValue);
-    const queuePanel = document.createElement("div");
-    queuePanel.className = "zydka-player-queue-panel";
+    const queuePanel = document.createElement("section");
+    queuePanel.className = "zydka-player-queue";
     queuePanel.hidden = true;
-    queuePanel.setAttribute("aria-hidden", "true");
-    const queuePanelHeader = document.createElement("div");
-    queuePanelHeader.className = "zydka-player-queue-header";
+    queuePanel.setAttribute("aria-labelledby", "zydka-player-queue-title");
     const queuePanelTitle = document.createElement("h3");
-    queuePanelTitle.className = "zydka-player-queue-title";
-    queuePanelTitle.textContent = "Playlist";
-    const closeQueueButton = document.createElement("button");
-    closeQueueButton.className = "zydka-player-queue-close";
-    closeQueueButton.type = "button";
-    closeQueueButton.textContent = "Close";
-    closeQueueButton.setAttribute("aria-label", "Close playlist");
-    queuePanelHeader.append(queuePanelTitle, closeQueueButton);
-    const queueList = document.createElement("div");
-    queueList.className = "zydka-player-queue-list";
-    queueList.setAttribute("role", "list");
-    queuePanel.append(queuePanelHeader, queueList);
+    queuePanelTitle.className = "zydka-player-queue__title";
+    queuePanelTitle.id = "zydka-player-queue-title";
+    queuePanelTitle.textContent = "\xC0 suivre";
+    const queueList = document.createElement("ol");
+    queueList.className = "zydka-player-queue__list";
+    queuePanel.append(queuePanelTitle, queueList);
     const footer = document.createElement("div");
     footer.className = "zydka-player-footer";
     const error = document.createElement("p");
     error.className = "zydka-player-error";
     error.hidden = true;
     footer.append(status, error);
-    card.append(header, actions, timeline, volumeControl, footer, queuePanel);
-    root.append(card);
+    card.append(header, actions, timeline, volumeControl, footer);
+    root.append(card, queuePanel);
     const failedCoverUrls = /* @__PURE__ */ new Set();
     const embeddedCoverUrls = /* @__PURE__ */ new Map();
     const requestedEmbeddedCoverUrls = /* @__PURE__ */ new Set();
     let refreshState = () => void 0;
+    let renderedQueueSignature = "";
     const getDisplayCoverUrl = (track) => {
       var _a, _b;
       if (!track) return null;
@@ -3396,40 +3384,34 @@
         return (_b = (_a = window.ZydkaPlayer) == null ? void 0 : _a.state().isPlaying) != null ? _b : false;
       }
     });
-    const setQueuePanelOpen = (isOpen) => {
-      queuePanel.hidden = !isOpen;
-      queuePanel.classList.toggle("is-open", isOpen);
-      queuePanel.setAttribute("aria-hidden", String(!isOpen));
-      queueButton.setAttribute("aria-expanded", String(isOpen));
-    };
     const renderQueueItems = (queue, currentIndex) => {
       queueList.innerHTML = "";
-      if (queue.length === 0) {
-        const empty = document.createElement("p");
-        empty.className = "zydka-player-queue-empty";
-        empty.textContent = "No tracks in queue.";
-        queueList.append(empty);
+      if (queue.length <= 1) {
+        queuePanel.hidden = true;
         return;
       }
+      queuePanel.hidden = false;
       queue.forEach((track, index) => {
+        const listItem = document.createElement("li");
         const item = document.createElement("button");
         const isActive = index === currentIndex;
-        item.className = isActive ? "zydka-player-queue-item is-active" : "zydka-player-queue-item";
+        const displayTitle = renderText(track.title || "Track " + String(index + 1));
+        item.className = isActive ? "zydka-player-queue__item zydka-player-queue__item--active" : "zydka-player-queue__item";
         item.type = "button";
-        item.setAttribute("role", "listitem");
-        item.setAttribute("aria-current", isActive ? "true" : "false");
+        item.setAttribute("aria-label", `Lire ${displayTitle}`);
+        if (isActive) {
+          item.setAttribute("aria-current", "true");
+        }
         const thumb = document.createElement("span");
-        thumb.className = "zydka-player-queue-thumb";
+        thumb.className = "zydka-player-queue__cover";
         const thumbImage = document.createElement("img");
-        thumbImage.className = "zydka-player-queue-thumb-image";
+        thumbImage.className = "zydka-player-queue__cover-image";
         thumbImage.alt = "";
         thumbImage.hidden = true;
         const thumbFallback = document.createElement("span");
-        thumbFallback.className = "zydka-player-queue-thumb-fallback";
+        thumbFallback.className = "zydka-player-queue__cover-fallback";
         thumbFallback.textContent = getCoverLabel(track);
-        if (queuePanel.classList.contains("is-open")) {
-          requestEmbeddedCover(track);
-        }
+        requestEmbeddedCover(track);
         const thumbCoverUrl = getDisplayCoverUrl(track);
         if (thumbCoverUrl && !failedCoverUrls.has(thumbCoverUrl)) {
           thumbImage.src = thumbCoverUrl;
@@ -3447,27 +3429,44 @@
           thumbFallback.hidden = false;
         });
         thumb.append(thumbImage, thumbFallback);
-        const number = document.createElement("span");
-        number.className = "zydka-player-queue-number";
-        number.textContent = String(index + 1).padStart(2, "0");
         const meta = document.createElement("span");
-        meta.className = "zydka-player-queue-meta";
+        meta.className = "zydka-player-queue__meta";
         const itemTitle = document.createElement("span");
-        itemTitle.className = "zydka-player-queue-track-title";
-        itemTitle.textContent = renderText(track.title || "Track " + String(index + 1));
+        itemTitle.className = "zydka-player-queue__track-title";
+        itemTitle.textContent = displayTitle;
         const itemArtist = document.createElement("span");
-        itemArtist.className = "zydka-player-queue-track-artist";
+        itemArtist.className = "zydka-player-queue__track-artist";
         itemArtist.textContent = renderText(track.artist || "");
-        meta.append(itemTitle, itemArtist);
-        item.append(thumb, number, meta);
+        itemArtist.hidden = !track.artist;
+        const itemState = document.createElement("span");
+        itemState.className = "zydka-player-queue__state";
+        itemState.textContent = isActive ? "En cours" : "";
+        itemState.hidden = !isActive;
+        const itemDuration = document.createElement("span");
+        itemDuration.className = "zydka-player-queue__duration";
+        itemDuration.textContent = track.duration ? formatTime(track.duration) : "";
+        itemDuration.hidden = !track.duration;
+        meta.append(itemTitle, itemArtist, itemState);
+        item.append(thumb, meta, itemDuration);
         item.addEventListener("click", () => {
           var _a;
           (_a = window.ZydkaPlayer) == null ? void 0 : _a.playAt(index);
           refreshState();
         });
-        queueList.append(item);
+        listItem.append(item);
+        queueList.append(listItem);
       });
     };
+    const getQueueSignature = (queue, currentIndex) => JSON.stringify({
+      currentIndex,
+      tracks: queue.map((track) => ({
+        id: track.id,
+        title: track.title,
+        artist: track.artist,
+        duration: track.duration,
+        cover: getDisplayCoverUrl(track)
+      }))
+    });
     refreshState = () => {
       var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s;
       const state = (_a = window.ZydkaPlayer) == null ? void 0 : _a.state();
@@ -3521,7 +3520,11 @@
       volumeValue.textContent = `${Math.round(volume * 100)}%`;
       muteButton.textContent = muted ? "Unmute" : "Mute";
       muteButton.setAttribute("aria-label", muted ? "Unmute" : "Mute");
-      renderQueueItems(queue, currentIndex);
+      const queueSignature = getQueueSignature(queue, currentIndex);
+      if (queueSignature !== renderedQueueSignature) {
+        renderQueueItems(queue, currentIndex);
+        renderedQueueSignature = queueSignature;
+      }
       error.textContent = (_s = state.error) != null ? _s : "";
       error.hidden = !state.error;
       mediaSession.refreshMetadata();
@@ -3560,13 +3563,6 @@
       (_a = window.ZydkaPlayer) == null ? void 0 : _a.next();
       refreshState();
     });
-    queueButton.addEventListener("click", () => {
-      setQueuePanelOpen(!queuePanel.classList.contains("is-open"));
-      refreshState();
-    });
-    closeQueueButton.addEventListener("click", () => {
-      setQueuePanelOpen(false);
-    });
     muteButton.addEventListener("click", () => {
       var _a, _b;
       if ((_a = window.ZydkaPlayer) == null ? void 0 : _a.isMuted()) {
@@ -3594,11 +3590,6 @@
       (_c = window.ZydkaPlayer) == null ? void 0 : _c.seek(trackDuration * ratio);
       refreshState();
       mediaSession.refreshPosition();
-    });
-    document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") {
-        setQueuePanelOpen(false);
-      }
     });
     refreshState();
     window.setInterval(refreshState, 250);

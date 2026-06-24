@@ -154,7 +154,7 @@
 
 .zydka-player-actions {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   margin-top: 20px;
 }
@@ -182,8 +182,7 @@
 .zydka-player-button:focus-visible,
 .zydka-player-progress:focus-visible,
 .zydka-player-volume-slider:focus-visible,
-.zydka-player-queue-close:focus-visible,
-.zydka-player-queue-item:focus-visible {
+.zydka-player-queue__item:focus-visible {
   outline: 2px solid #111111;
   outline-offset: 3px;
 }
@@ -285,35 +284,36 @@
 }
 
 
-.zydka-player-queue-panel[hidden] {
+.zydka-player-queue[hidden] {
   display: none;
 }
 
-.zydka-player-queue-panel {
-  position: absolute;
-  z-index: 20;
-  top: 16px;
-  right: 16px;
-  width: min(340px, calc(100% - 32px));
-  max-height: min(420px, calc(100% + 120px));
-  overflow: hidden;
+.zydka-player-queue {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 640px;
+  margin: -10px 0 24px;
+  padding: 16px;
   border: 1px solid #d4d4d4;
   border-radius: 8px;
   background: #ffffff;
   color: #111111;
-  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.05);
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
 }
 
-.zydka-player-queue-header {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 14px 12px;
-  border-bottom: 1px solid #ededed;
+.zydka-player-queue *,
+.zydka-player-queue *::before,
+.zydka-player-queue *::after {
+  box-sizing: border-box;
 }
 
-.zydka-player-queue-title {
+.zydka-player-queue__title {
   margin: 0;
   color: #111111;
   font-size: 14px;
@@ -321,62 +321,48 @@
   line-height: 1.2;
 }
 
-.zydka-player-queue-close {
-  min-height: 34px;
-  padding: 7px 10px;
-  border: 1px solid #d0d0d0;
-  border-radius: 6px;
-  background: #ffffff;
-  color: #111111;
-  cursor: pointer;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 800;
-  line-height: 1;
-}
-
-.zydka-player-queue-close:hover,
-.zydka-player-queue-close:focus {
-  background: #f3f3f3;
-}
-
-.zydka-player-queue-list {
-  max-height: 340px;
-  overflow-y: auto;
-  padding: 8px;
-}
-
-.zydka-player-queue-item {
+.zydka-player-queue__list {
   display: grid;
-  grid-template-columns: 42px 34px minmax(0, 1fr);
-  gap: 10px;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.zydka-player-queue__item {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
   width: 100%;
-  min-height: 58px;
-  padding: 10px;
-  border: 0;
+  min-height: 60px;
+  padding: 9px 10px;
+  border: 1px solid #e2e2e2;
   border-radius: 6px;
-  background: #ffffff;
+  background: #fbfbfb;
   color: #111111;
   cursor: pointer;
   font: inherit;
   text-align: left;
 }
 
-.zydka-player-queue-item:hover,
-.zydka-player-queue-item:focus {
+.zydka-player-queue__item:hover,
+.zydka-player-queue__item:focus {
   background: #f3f3f3;
+  border-color: #c9c9c9;
 }
 
-.zydka-player-queue-item.is-active {
-  background: #111111;
-  color: #ffffff;
+.zydka-player-queue__item--active {
+  border-color: #111111;
+  background: #ffffff;
+  box-shadow: inset 4px 0 0 #111111;
 }
 
-.zydka-player-queue-thumb {
+.zydka-player-queue__cover {
   position: relative;
   display: grid;
   place-items: center;
-  width: 42px;
+  width: 44px;
   aspect-ratio: 1;
   overflow: hidden;
   border: 1px solid #dedede;
@@ -385,71 +371,61 @@
   color: #ffffff;
 }
 
-.zydka-player-queue-thumb-image {
+.zydka-player-queue__cover-image {
   display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.zydka-player-queue-thumb-fallback {
+.zydka-player-queue__cover-fallback {
   font-size: 14px;
   font-weight: 800;
   line-height: 1;
 }
 
-.zydka-player-queue-number {
-  color: #777777;
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-  font-weight: 800;
-  line-height: 1.4;
-}
-
-.zydka-player-queue-item.is-active .zydka-player-queue-number {
-  color: #d8d8d8;
-}
-
-.zydka-player-queue-item.is-active .zydka-player-queue-thumb {
-  border-color: #ffffff;
-}
-
-.zydka-player-queue-meta {
+.zydka-player-queue__meta {
   display: grid;
-  gap: 4px;
+  gap: 3px;
   min-width: 0;
 }
 
-.zydka-player-queue-track-title,
-.zydka-player-queue-track-artist {
+.zydka-player-queue__track-title,
+.zydka-player-queue__track-artist,
+.zydka-player-queue__state {
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.zydka-player-queue-track-title {
+.zydka-player-queue__track-title {
   font-size: 14px;
   font-weight: 800;
   line-height: 1.25;
 }
 
-.zydka-player-queue-track-artist {
+.zydka-player-queue__track-artist {
   color: #666666;
   font-size: 12px;
   line-height: 1.25;
 }
 
-.zydka-player-queue-item.is-active .zydka-player-queue-track-artist {
-  color: #d0d0d0;
+.zydka-player-queue__state {
+  color: #111111;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-transform: uppercase;
 }
 
-.zydka-player-queue-empty {
-  margin: 0;
-  padding: 14px;
+.zydka-player-queue__duration {
   color: #666666;
-  font-size: 13px;
-  line-height: 1.35;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .zydka-player-footer {
@@ -556,30 +532,22 @@
     gap: 8px;
   }
 
-  .zydka-player-queue-panel {
-    position: fixed;
-    top: auto;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    max-height: min(78vh, 560px);
-    border-width: 1px 0 0;
-    border-radius: 14px 14px 0 0;
-    box-shadow: 0 -18px 60px rgba(0, 0, 0, 0.2);
+  .zydka-player-queue {
+    margin: -4px 0 18px;
+    padding: 14px;
   }
 
-  .zydka-player-queue-list {
-    max-height: calc(78vh - 64px);
-    padding: 8px 10px 14px;
+  .zydka-player-queue__item {
+    grid-template-columns: 42px minmax(0, 1fr);
+    min-height: 60px;
   }
 
-  .zydka-player-queue-item {
-    grid-template-columns: 44px 30px minmax(0, 1fr);
-    min-height: 62px;
+  .zydka-player-queue__cover {
+    width: 42px;
   }
 
-  .zydka-player-queue-thumb {
-    width: 44px;
+  .zydka-player-queue__duration {
+    grid-column: 2;
+    justify-self: start;
   }
 }

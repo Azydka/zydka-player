@@ -7,6 +7,10 @@ export class WordPressBridge {
     PlayerController.play();
   }
 
+  static resume() {
+    PlayerController.play();
+  }
+
   static setQueue(tracks: ITrack[]) {
     PlayerController.setQueue(tracks);
   }

@@ -3,6 +3,7 @@ export interface AudioTrack {
   audioUrl: string;
   title?: string;
   artist?: string;
+  album?: string;
   cover?: string;
   buyUrl?: string;
   buyLabel?: string;

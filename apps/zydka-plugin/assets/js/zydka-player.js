@@ -2736,6 +2736,9 @@
       PlayerController.load(track);
       PlayerController.play();
     }
+    static resume() {
+      PlayerController.play();
+    }
     static setQueue(tracks) {
       PlayerController.setQueue(tracks);
     }
@@ -2966,6 +2969,148 @@
     embeddedCoverCache.clear();
   }
 
+  // src/mediaSession.ts
+  var noopController = {
+    refreshMetadata: () => void 0,
+    refreshPosition: () => void 0,
+    refreshPositionThrottled: () => void 0
+  };
+  var POSITION_UPDATE_INTERVAL_MS = 1e3;
+  function getMediaSession() {
+    var _a;
+    if (typeof navigator === "undefined" || !("mediaSession" in navigator)) {
+      return null;
+    }
+    return (_a = navigator.mediaSession) != null ? _a : null;
+  }
+  function getMediaMetadataConstructor() {
+    var _a;
+    if (typeof window === "undefined" || !("MediaMetadata" in window)) {
+      return null;
+    }
+    return (_a = window.MediaMetadata) != null ? _a : null;
+  }
+  function safeRun(callback) {
+    try {
+      callback();
+    } catch (e) {
+    }
+  }
+  function cleanText(value, fallback) {
+    const normalizedValue = value == null ? void 0 : value.trim();
+    return normalizedValue || fallback;
+  }
+  function getArtworkType(src) {
+    var _a, _b;
+    const normalizedSrc = (_b = (_a = src.split("?")[0]) == null ? void 0 : _a.toLowerCase()) != null ? _b : "";
+    if (normalizedSrc.startsWith("blob:")) return void 0;
+    if (normalizedSrc.endsWith(".png")) return "image/png";
+    if (normalizedSrc.endsWith(".webp")) return "image/webp";
+    if (normalizedSrc.endsWith(".jpg") || normalizedSrc.endsWith(".jpeg")) return "image/jpeg";
+    return void 0;
+  }
+  function createArtwork(src) {
+    if (!(src == null ? void 0 : src.trim())) return void 0;
+    const artwork = {
+      src: src.trim(),
+      sizes: "512x512"
+    };
+    const type = getArtworkType(artwork.src);
+    if (type) {
+      artwork.type = type;
+    }
+    return [artwork];
+  }
+  function getValidPositionState(options) {
+    const duration = options.getDuration();
+    if (!Number.isFinite(duration) || duration <= 0) {
+      return null;
+    }
+    const currentTime = options.getCurrentTime();
+    const position = Number.isFinite(currentTime) ? Math.min(duration, Math.max(0, currentTime)) : 0;
+    return {
+      duration,
+      playbackRate: 1,
+      position
+    };
+  }
+  function setPlaybackState(mediaSession, isPlaying) {
+    safeRun(() => {
+      mediaSession.playbackState = isPlaying ? "playing" : "paused";
+    });
+  }
+  function setupMediaSession(options) {
+    const mediaSession = getMediaSession();
+    if (!mediaSession) {
+      return noopController;
+    }
+    const mediaMetadata = getMediaMetadataConstructor();
+    let metadataSignature = "";
+    let lastPositionUpdate = 0;
+    const refreshPosition = () => {
+      setPlaybackState(mediaSession, options.isPlaying());
+      const positionState = getValidPositionState(options);
+      if (!positionState || typeof mediaSession.setPositionState !== "function") {
+        return;
+      }
+      safeRun(() => {
+        var _a;
+        return (_a = mediaSession.setPositionState) == null ? void 0 : _a.call(mediaSession, positionState);
+      });
+    };
+    const refreshMetadata = () => {
+      if (!mediaMetadata) return;
+      const track = options.getCurrentTrack();
+      if (!track) return;
+      const artwork = createArtwork(options.getArtwork(track));
+      const metadata = {
+        title: cleanText(track.title, "Zydka Player"),
+        artist: cleanText(track.artist, "Louis94"),
+        album: cleanText(track.album, "Louis94")
+      };
+      if (artwork) {
+        metadata.artwork = artwork;
+      }
+      const signature = JSON.stringify(metadata);
+      if (signature === metadataSignature) {
+        return;
+      }
+      metadataSignature = signature;
+      safeRun(() => {
+        mediaSession.metadata = new mediaMetadata(metadata);
+      });
+    };
+    const refreshPositionThrottled = () => {
+      const now = Date.now();
+      if (now - lastPositionUpdate < POSITION_UPDATE_INTERVAL_MS) {
+        return;
+      }
+      lastPositionUpdate = now;
+      refreshPosition();
+    };
+    const setHandler = (action, handler) => {
+      safeRun(() => {
+        var _a;
+        (_a = mediaSession.setActionHandler) == null ? void 0 : _a.call(mediaSession, action, () => {
+          safeRun(handler);
+          window.setTimeout(() => {
+            refreshMetadata();
+            refreshPosition();
+          }, 0);
+        });
+      });
+    };
+    setHandler("play", options.play);
+    setHandler("pause", options.pause);
+    setHandler("previoustrack", options.previous);
+    setHandler("nexttrack", options.next);
+    return {
+      refreshMetadata,
+      refreshPosition,
+      refreshPositionThrottled
+    };
+  }
+
   // src/index.ts
   var fallbackTrack = {
     id: "demo-track",
@@ -2989,6 +3134,7 @@
       title: track.title,
       artist: track.artist,
       cover: track.cover,
+      album: track.album,
       buyUrl: (_b = track.buyUrl) != null ? _b : track.buy_url,
       buyLabel: (_c = track.buyLabel) != null ? _c : track.buy_label,
       duration: track.duration
@@ -3010,6 +3156,7 @@
       artist: root.dataset.artist || fallbackTrack.artist,
       src: root.dataset.src || fallbackTrack.src,
       cover: root.dataset.cover || fallbackTrack.cover,
+      album: root.dataset.album,
       buyUrl: root.dataset.buyUrl,
       buyLabel: root.dataset.buyLabel
     };
@@ -3207,6 +3354,48 @@
         refreshState();
       });
     };
+    const playCurrentTrack = () => {
+      var _a, _b, _c, _d, _e;
+      const state = (_a = window.ZydkaPlayer) == null ? void 0 : _a.state();
+      if (state == null ? void 0 : state.currentTrack) {
+        (_b = window.ZydkaPlayer) == null ? void 0 : _b.resume();
+        return;
+      }
+      const currentIndex = (_d = (_c = window.ZydkaPlayer) == null ? void 0 : _c.getCurrentIndex()) != null ? _d : 0;
+      (_e = window.ZydkaPlayer) == null ? void 0 : _e.playAt(Math.max(0, currentIndex));
+    };
+    const mediaSession = setupMediaSession({
+      getCurrentTrack: () => {
+        var _a, _b;
+        return (_b = (_a = window.ZydkaPlayer) == null ? void 0 : _a.state().currentTrack) != null ? _b : null;
+      },
+      getArtwork: (track) => getDisplayCoverUrl(track),
+      play: playCurrentTrack,
+      pause: () => {
+        var _a;
+        return (_a = window.ZydkaPlayer) == null ? void 0 : _a.pause();
+      },
+      previous: () => {
+        var _a;
+        (_a = window.ZydkaPlayer) == null ? void 0 : _a.previous();
+      },
+      next: () => {
+        var _a;
+        (_a = window.ZydkaPlayer) == null ? void 0 : _a.next();
+      },
+      getCurrentTime: () => {
+        var _a, _b;
+        return (_b = (_a = window.ZydkaPlayer) == null ? void 0 : _a.getCurrentTime()) != null ? _b : 0;
+      },
+      getDuration: () => {
+        var _a, _b;
+        return (_b = (_a = window.ZydkaPlayer) == null ? void 0 : _a.getDuration()) != null ? _b : 0;
+      },
+      isPlaying: () => {
+        var _a, _b;
+        return (_b = (_a = window.ZydkaPlayer) == null ? void 0 : _a.state().isPlaying) != null ? _b : false;
+      }
+    });
     const setQueuePanelOpen = (isOpen) => {
       queuePanel.hidden = !isOpen;
       queuePanel.classList.toggle("is-open", isOpen);
@@ -3335,6 +3524,12 @@
       renderQueueItems(queue, currentIndex);
       error.textContent = (_s = state.error) != null ? _s : "";
       error.hidden = !state.error;
+      mediaSession.refreshMetadata();
+      if (state.isPlaying) {
+        mediaSession.refreshPositionThrottled();
+      } else {
+        mediaSession.refreshPosition();
+      }
     };
     coverImage.addEventListener("error", () => {
       const failedCover = coverImage.dataset.coverSrc;
@@ -3351,13 +3546,12 @@
       refreshState();
     });
     toggleButton.addEventListener("click", () => {
-      var _a, _b, _c, _d, _e;
+      var _a, _b;
       const state = (_a = window.ZydkaPlayer) == null ? void 0 : _a.state();
       if (state == null ? void 0 : state.isPlaying) {
         (_b = window.ZydkaPlayer) == null ? void 0 : _b.pause();
       } else {
-        const currentIndex = (_d = (_c = window.ZydkaPlayer) == null ? void 0 : _c.getCurrentIndex()) != null ? _d : 0;
-        (_e = window.ZydkaPlayer) == null ? void 0 : _e.playAt(Math.max(0, currentIndex));
+        playCurrentTrack();
       }
       refreshState();
     });
@@ -3399,6 +3593,7 @@
       const ratio = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
       (_c = window.ZydkaPlayer) == null ? void 0 : _c.seek(trackDuration * ratio);
       refreshState();
+      mediaSession.refreshPosition();
     });
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
@@ -3423,6 +3618,7 @@
       seek: (seconds) => WordPressBridge.seek(seconds),
       getCurrentTime: () => WordPressBridge.getCurrentTime(),
       getDuration: () => WordPressBridge.getDuration(),
+      resume: () => WordPressBridge.resume(),
       setQueue: (tracks) => WordPressBridge.setQueue(normalizeQueue(tracks)),
       getQueue: () => WordPressBridge.getQueue(),
       getCurrentIndex: () => WordPressBridge.getCurrentIndex(),

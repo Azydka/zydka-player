@@ -1,5 +1,6 @@
 import { WordPressBridge } from '@zydka/wordpress-bridge';
 import { getEmbeddedCoverUrl, revokeEmbeddedCoverCache } from './metadataCover';
+import { setupMediaSession } from './mediaSession';
 
 interface ZydkaTrackInput {
   id: string | number;
@@ -8,6 +9,7 @@ interface ZydkaTrackInput {
   title?: string;
   artist?: string;
   cover?: string;
+  album?: string;
   buy_url?: string;
   buy_label?: string;
   buyUrl?: string;
@@ -21,6 +23,7 @@ interface ZydkaTrack {
   title?: string;
   artist?: string;
   cover?: string;
+  album?: string;
   buyUrl?: string;
   buyLabel?: string;
   duration?: number;
@@ -45,6 +48,7 @@ interface ZydkaPlayerAPI {
   seek: (seconds: number) => number;
   getCurrentTime: () => number;
   getDuration: () => number;
+  resume: () => void;
   setQueue: (tracks: ZydkaTrackInput[]) => void;
   getQueue: () => ZydkaTrack[];
   getCurrentIndex: () => number;
@@ -89,6 +93,7 @@ function normalizeTrack(track: ZydkaTrackInput): ZydkaTrack | null {
     title: track.title,
     artist: track.artist,
     cover: track.cover,
+    album: track.album,
     buyUrl: track.buyUrl ?? track.buy_url,
     buyLabel: track.buyLabel ?? track.buy_label,
     duration: track.duration,
@@ -114,6 +119,7 @@ function readTrackFromRoot(root: HTMLElement): ZydkaTrackInput {
     artist: root.dataset.artist || fallbackTrack.artist,
     src: root.dataset.src || fallbackTrack.src,
     cover: root.dataset.cover || fallbackTrack.cover,
+    album: root.dataset.album,
     buyUrl: root.dataset.buyUrl,
     buyLabel: root.dataset.buyLabel,
   };
@@ -373,6 +379,34 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
     });
   };
 
+  const playCurrentTrack = (): void => {
+    const state = window.ZydkaPlayer?.state();
+
+    if (state?.currentTrack) {
+      window.ZydkaPlayer?.resume();
+      return;
+    }
+
+    const currentIndex = window.ZydkaPlayer?.getCurrentIndex() ?? 0;
+    window.ZydkaPlayer?.playAt(Math.max(0, currentIndex));
+  };
+
+  const mediaSession = setupMediaSession({
+    getCurrentTrack: () => window.ZydkaPlayer?.state().currentTrack ?? null,
+    getArtwork: (track) => getDisplayCoverUrl(track as ZydkaTrack),
+    play: playCurrentTrack,
+    pause: () => window.ZydkaPlayer?.pause(),
+    previous: () => {
+      window.ZydkaPlayer?.previous();
+    },
+    next: () => {
+      window.ZydkaPlayer?.next();
+    },
+    getCurrentTime: () => window.ZydkaPlayer?.getCurrentTime() ?? 0,
+    getDuration: () => window.ZydkaPlayer?.getDuration() ?? 0,
+    isPlaying: () => window.ZydkaPlayer?.state().isPlaying ?? false,
+  });
+
   const setQueuePanelOpen = (isOpen: boolean): void => {
     queuePanel.hidden = !isOpen;
     queuePanel.classList.toggle('is-open', isOpen);
@@ -530,6 +564,13 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
     renderQueueItems(queue, currentIndex);
     error.textContent = state.error ?? '';
     error.hidden = !state.error;
+    mediaSession.refreshMetadata();
+
+    if (state.isPlaying) {
+      mediaSession.refreshPositionThrottled();
+    } else {
+      mediaSession.refreshPosition();
+    }
   };
 
   coverImage.addEventListener('error', () => {
@@ -555,8 +596,7 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
     if (state?.isPlaying) {
       window.ZydkaPlayer?.pause();
     } else {
-      const currentIndex = window.ZydkaPlayer?.getCurrentIndex() ?? 0;
-      window.ZydkaPlayer?.playAt(Math.max(0, currentIndex));
+      playCurrentTrack();
     }
 
     refreshState();
@@ -608,6 +648,7 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
 
     window.ZydkaPlayer?.seek(trackDuration * ratio);
     refreshState();
+    mediaSession.refreshPosition();
   });
 
   document.addEventListener('keydown', (event) => {
@@ -639,6 +680,7 @@ function bootstrap(): void {
     seek: (seconds: number) => WordPressBridge.seek(seconds),
     getCurrentTime: () => WordPressBridge.getCurrentTime(),
     getDuration: () => WordPressBridge.getDuration(),
+    resume: () => WordPressBridge.resume(),
     setQueue: (tracks: ZydkaTrackInput[]) => WordPressBridge.setQueue(normalizeQueue(tracks)),
     getQueue: () => WordPressBridge.getQueue(),
     getCurrentIndex: () => WordPressBridge.getCurrentIndex(),

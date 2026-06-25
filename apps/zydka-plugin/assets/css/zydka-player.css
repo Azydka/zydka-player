@@ -554,6 +554,19 @@
   color: rgba(23, 23, 23, 0.72);
 }
 
+.zydka-player-favorite-button {
+  color: rgba(23, 23, 23, 0.72);
+}
+
+.zydka-player-control-icon--favorite path {
+  fill: transparent;
+}
+
+.zydka-player-favorite-button--active .zydka-player-control-icon--favorite path {
+  fill: currentColor;
+  stroke: currentColor;
+}
+
 .zydka-player-share-feedback {
   min-width: 82px;
   padding: 6px 10px;

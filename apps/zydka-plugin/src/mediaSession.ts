@@ -25,14 +25,29 @@ interface MediaSessionLike {
   metadata: unknown;
   playbackState?: 'none' | 'paused' | 'playing';
   setActionHandler?: (
-    action: 'play' | 'pause' | 'previoustrack' | 'nexttrack',
-    handler: (() => void) | null,
+    action: MediaSessionAction,
+    handler: ((details?: MediaSessionActionDetails) => void) | null,
   ) => void;
   setPositionState?: (state: {
     duration: number;
     playbackRate: number;
     position: number;
   }) => void;
+}
+
+type MediaSessionAction =
+  | 'play'
+  | 'pause'
+  | 'previoustrack'
+  | 'nexttrack'
+  | 'seekbackward'
+  | 'seekforward'
+  | 'seekto';
+
+interface MediaSessionActionDetails {
+  seekOffset?: number;
+  seekTime?: number;
+  fastSeek?: boolean;
 }
 
 interface MediaSessionOptions {
@@ -42,6 +57,7 @@ interface MediaSessionOptions {
   pause: () => void;
   previous: () => void;
   next: () => void;
+  seek: (seconds: number) => void;
   getCurrentTime: () => number;
   getDuration: () => number;
   isPlaying: () => boolean;
@@ -210,12 +226,12 @@ export function setupMediaSession(options: MediaSessionOptions): MediaSessionCon
   };
 
   const setHandler = (
-    action: 'play' | 'pause' | 'previoustrack' | 'nexttrack',
-    handler: () => void,
+    action: MediaSessionAction,
+    handler: (details: MediaSessionActionDetails) => void,
   ): void => {
     safeRun(() => {
-      mediaSession.setActionHandler?.(action, () => {
-        safeRun(handler);
+      mediaSession.setActionHandler?.(action, (details) => {
+        safeRun(() => handler(details ?? {}));
         window.setTimeout(() => {
           refreshMetadata();
           refreshPosition();
@@ -224,10 +240,32 @@ export function setupMediaSession(options: MediaSessionOptions): MediaSessionCon
     });
   };
 
-  setHandler('play', options.play);
-  setHandler('pause', options.pause);
-  setHandler('previoustrack', options.previous);
-  setHandler('nexttrack', options.next);
+  const seekTo = (seconds: number): void => {
+    const duration = options.getDuration();
+
+    if (!Number.isFinite(duration) || duration <= 0 || !Number.isFinite(seconds)) {
+      return;
+    }
+
+    options.seek(Math.min(duration, Math.max(0, seconds)));
+  };
+
+  const seekBy = (offset: number): void => {
+    const currentTime = options.getCurrentTime();
+    seekTo((Number.isFinite(currentTime) ? currentTime : 0) + offset);
+  };
+
+  setHandler('play', () => options.play());
+  setHandler('pause', () => options.pause());
+  setHandler('previoustrack', () => options.previous());
+  setHandler('nexttrack', () => options.next());
+  setHandler('seekbackward', (details) => seekBy(-(details.seekOffset ?? 10)));
+  setHandler('seekforward', (details) => seekBy(details.seekOffset ?? 10));
+  setHandler('seekto', (details) => {
+    if (typeof details.seekTime === 'number') {
+      seekTo(details.seekTime);
+    }
+  });
 
   return {
     refreshMetadata,

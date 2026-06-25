@@ -191,6 +191,10 @@ function formatTime(seconds: number): string {
   return `${minutes}:${String(remainingSeconds).padStart(2, '0')}`;
 }
 
+function formatDurationTime(seconds: number): string {
+  return Number.isFinite(seconds) && seconds > 0 ? formatTime(seconds) : '--:--';
+}
+
 type ControlIconName = 'shuffle' | 'previous' | 'play' | 'pause' | 'next' | 'repeat' | 'volume' | 'muted' | 'favorite' | 'share';
 
 const favoritesStorageKey = 'zydkaPlayerFavorites';
@@ -389,11 +393,14 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
   const progress = document.createElement('button');
   progress.className = 'zydka-player-progress';
   progress.type = 'button';
-  progress.setAttribute('aria-label', 'Seek');
+  progress.setAttribute('aria-label', 'Progression du morceau');
   progress.setAttribute('aria-valuemin', '0');
-  progress.setAttribute('aria-valuemax', '100');
+  progress.setAttribute('aria-valuemax', '0');
   progress.setAttribute('aria-valuenow', '0');
+  progress.setAttribute('aria-valuetext', '0:00 / --:--');
   progress.setAttribute('role', 'slider');
+  progress.setAttribute('aria-disabled', 'true');
+  progress.tabIndex = -1;
 
   const progressFill = document.createElement('span');
   progressFill.className = 'zydka-player-progress-fill';
@@ -401,7 +408,7 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
 
   const duration = document.createElement('span');
   duration.className = 'zydka-player-time';
-  duration.textContent = '0:00';
+  duration.textContent = '--:--';
 
   timeline.append(currentTime, progress, duration);
 
@@ -796,6 +803,10 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
     next: () => {
       playNextTrack();
     },
+    seek: (seconds) => {
+      window.ZydkaPlayer?.seek(seconds);
+      refreshState();
+    },
     getCurrentTime: () => window.ZydkaPlayer?.getCurrentTime() ?? 0,
     getDuration: () => window.ZydkaPlayer?.getDuration() ?? 0,
     isPlaying: () => window.ZydkaPlayer?.state().isPlaying ?? false,
@@ -964,7 +975,14 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
     const displayTrack = state.currentTrack ?? queue[currentIndex] ?? normalizeTrack(fallbackDisplayTrack);
     const position = window.ZydkaPlayer?.getCurrentTime() ?? state.position;
     const trackDuration = window.ZydkaPlayer?.getDuration() ?? state.duration;
-    const progressPercent = trackDuration > 0 ? Math.min(100, (position / trackDuration) * 100) : 0;
+    const hasKnownDuration = Number.isFinite(trackDuration) && trackDuration > 0;
+    const displayPosition = Math.max(
+      0,
+      hasKnownDuration
+        ? Math.min(trackDuration, Number.isFinite(position) ? position : 0)
+        : Number.isFinite(position) ? position : 0,
+    );
+    const progressPercent = hasKnownDuration ? Math.min(100, (displayPosition / trackDuration) * 100) : 0;
     const displayIndex = queue.length > 0 ? Math.max(0, currentIndex) + 1 : 0;
     const volume = window.ZydkaPlayer?.getVolume() ?? state.volume;
     const muted = window.ZydkaPlayer?.isMuted() ?? state.muted;
@@ -1047,10 +1065,18 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
     toggleButton.classList.toggle('zydka-player-toggle-button--playing', state.isPlaying);
     setIconButton(toggleButton, state.isPlaying ? 'Pause' : 'Play', state.isPlaying ? 'pause' : 'play');
     statusValue.textContent = state.status;
-    currentTime.textContent = formatTime(position);
-    duration.textContent = formatTime(trackDuration);
+    currentTime.textContent = formatTime(displayPosition);
+    duration.textContent = formatDurationTime(trackDuration);
     progressFill.style.width = `${progressPercent}%`;
-    progress.setAttribute('aria-valuenow', String(Math.round(progressPercent)));
+    progress.classList.toggle('zydka-player-progress--disabled', !hasKnownDuration);
+    progress.setAttribute('aria-disabled', String(!hasKnownDuration));
+    progress.setAttribute('aria-valuemax', hasKnownDuration ? String(Math.round(trackDuration)) : '0');
+    progress.setAttribute('aria-valuenow', String(Math.round(displayPosition)));
+    progress.setAttribute(
+      'aria-valuetext',
+      `${formatTime(displayPosition)} / ${formatDurationTime(trackDuration)}`,
+    );
+    progress.tabIndex = hasKnownDuration ? 0 : -1;
     volumeSlider.value = String(volume);
     volumeValue.textContent = `${Math.round(volume * 100)}%`;
     volumeControl.classList.toggle('zydka-player-volume--muted', muted);
@@ -1187,17 +1213,67 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
     refreshState();
   });
 
-  progress.addEventListener('click', (event) => {
+  const getSeekDuration = (): number => {
     const trackDuration = window.ZydkaPlayer?.getDuration() ?? 0;
+    return Number.isFinite(trackDuration) && trackDuration > 0 ? trackDuration : 0;
+  };
+
+  const seekToTime = (seconds: number): void => {
+    const trackDuration = getSeekDuration();
+
+    if (trackDuration <= 0 || !Number.isFinite(seconds)) return;
+
+    window.ZydkaPlayer?.seek(Math.min(trackDuration, Math.max(0, seconds)));
+    refreshState();
+    mediaSession.refreshPosition();
+  };
+
+  const seekFromClientX = (clientX: number): void => {
+    const trackDuration = getSeekDuration();
 
     if (trackDuration <= 0) return;
 
     const rect = progress.getBoundingClientRect();
-    const ratio = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
 
-    window.ZydkaPlayer?.seek(trackDuration * ratio);
-    refreshState();
-    mediaSession.refreshPosition();
+    if (rect.width <= 0) return;
+
+    const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+    seekToTime(trackDuration * ratio);
+  };
+
+  if ('PointerEvent' in window) {
+    progress.addEventListener('pointerdown', (event) => {
+      if (!event.isPrimary) return;
+      seekFromClientX(event.clientX);
+    });
+  } else {
+    progress.addEventListener('click', (event) => {
+      if (event.detail === 0) return;
+      seekFromClientX(event.clientX);
+    });
+  }
+
+  progress.addEventListener('keydown', (event) => {
+    const trackDuration = getSeekDuration();
+
+    if (trackDuration <= 0) return;
+
+    const currentPosition = window.ZydkaPlayer?.getCurrentTime() ?? 0;
+    const keyboardStep = event.shiftKey ? 15 : 5;
+
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') {
+      event.preventDefault();
+      seekToTime(currentPosition - keyboardStep);
+    } else if (event.key === 'ArrowRight' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      seekToTime(currentPosition + keyboardStep);
+    } else if (event.key === 'Home') {
+      event.preventDefault();
+      seekToTime(0);
+    } else if (event.key === 'End') {
+      event.preventDefault();
+      seekToTime(trackDuration);
+    }
   });
 
   favoriteKeys = readFavoriteKeys();

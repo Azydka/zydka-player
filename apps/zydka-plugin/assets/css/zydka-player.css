@@ -433,7 +433,7 @@
   position: relative;
   display: block;
   width: 100%;
-  height: 18px;
+  height: 20px;
   padding: 0;
   overflow: hidden;
   border: 1px solid rgba(23, 23, 23, 0.06);
@@ -441,6 +441,7 @@
   background: #e7dfd5;
   cursor: pointer;
   box-shadow: inset 0 2px 6px rgba(31, 24, 16, 0.08);
+  touch-action: manipulation;
 }
 
 .zydka-player-progress-fill {
@@ -452,6 +453,32 @@
     linear-gradient(90deg, var(--zydka-red-dark), var(--zydka-red)),
     var(--zydka-red);
   box-shadow: 0 0 18px rgba(189, 23, 30, 0.26);
+  transition: width 120ms linear;
+}
+
+.zydka-player-progress-fill::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 0 0 1px rgba(147, 17, 22, 0.16);
+  transform: translateY(-50%);
+}
+
+.zydka-player-progress--disabled {
+  cursor: default;
+}
+
+.zydka-player-progress--disabled .zydka-player-progress-fill {
+  box-shadow: none;
+}
+
+.zydka-player-progress--disabled .zydka-player-progress-fill::after {
+  display: none;
 }
 
 .zydka-player-volume {

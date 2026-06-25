@@ -544,10 +544,39 @@
 .zydka-player-share {
   display: flex;
   gap: 10px;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
   min-height: 32px;
   margin-top: 14px;
+}
+
+.zydka-player-download-link[hidden] {
+  display: none;
+}
+
+.zydka-player-download-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 11px 16px;
+  border-color: rgba(189, 23, 30, 0.24);
+  background: rgba(189, 23, 30, 0.08);
+  color: var(--zydka-red);
+  font-size: 12px;
+  font-weight: 850;
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: 0 12px 24px rgba(189, 23, 30, 0.08);
+}
+
+.zydka-player-download-link:hover,
+.zydka-player-download-link:focus {
+  border-color: rgba(189, 23, 30, 0.4);
+  background: var(--zydka-red);
+  color: #ffffff;
+  text-decoration: none;
 }
 
 .zydka-player-share-button {
@@ -1192,6 +1221,11 @@
   .zydka-player-share {
     justify-content: center;
     width: 100%;
+  }
+
+  .zydka-player-download-link {
+    flex: 1 1 100%;
+    max-width: 220px;
   }
 
   .zydka-player-queue-button {

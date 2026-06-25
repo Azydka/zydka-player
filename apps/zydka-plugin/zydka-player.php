@@ -45,7 +45,7 @@ add_action( 'wp_enqueue_scripts', 'zydka_player_enqueue_assets' );
  */
 function zydka_player_render_container( array $attrs = [], array $tracks = [] ): string {
     $data_attributes = sprintf(
-        'data-source="%s" data-track-id="%s" data-title="%s" data-artist="%s" data-album="%s" data-src="%s" data-cover="%s" data-buy-url="%s" data-buy-label="%s"',
+        'data-source="%s" data-track-id="%s" data-title="%s" data-artist="%s" data-album="%s" data-src="%s" data-cover="%s" data-buy-url="%s" data-buy-label="%s" data-download-url="%s"',
         esc_attr( $attrs['source'] ?? 'shortcode' ),
         esc_attr( $attrs['id'] ?? 'demo-track' ),
         esc_attr( $attrs['title'] ?? 'Demo Track' ),
@@ -54,7 +54,8 @@ function zydka_player_render_container( array $attrs = [], array $tracks = [] ):
         esc_url( $attrs['src'] ?? '' ),
         esc_url( $attrs['cover'] ?? '' ),
         esc_url( $attrs['buy_url'] ?? '' ),
-        esc_attr( $attrs['buy_label'] ?? '' )
+        esc_attr( $attrs['buy_label'] ?? '' ),
+        esc_url( $attrs['download_url'] ?? '' )
     );
 
     if ( ! empty( $tracks ) ) {
@@ -85,6 +86,7 @@ function zydka_player_shortcode( $atts = [] ): string {
             'cover'  => '',
             'buy_url' => '',
             'buy_label' => '',
+            'download_url' => '',
         ],
         is_array( $atts ) ? $atts : [],
         'zydka_player'
@@ -98,6 +100,7 @@ function zydka_player_shortcode( $atts = [] ): string {
     $atts['cover']  = esc_url_raw( $atts['cover'] );
     $atts['buy_url'] = esc_url_raw( $atts['buy_url'] );
     $atts['buy_label'] = sanitize_text_field( $atts['buy_label'] );
+    $atts['download_url'] = esc_url_raw( $atts['download_url'] );
 
     return zydka_player_render_container( $atts );
 }
@@ -128,6 +131,7 @@ function zydka_playlist_shortcode( $atts = [], $content = null ): string {
         'cover'  => '',
         'buy_url' => '',
         'buy_label' => '',
+        'download_url' => '',
     ];
 
     $first_track['source'] = 'playlist';
@@ -156,6 +160,7 @@ function zydka_track_shortcode( $atts = [] ): string {
             'cover'  => '',
             'buy_url' => '',
             'buy_label' => '',
+            'download_url' => '',
         ],
         is_array( $atts ) ? $atts : [],
         'zydka_track'
@@ -176,6 +181,7 @@ function zydka_track_shortcode( $atts = [] ): string {
         'cover'  => esc_url_raw( $atts['cover'] ),
         'buy_url' => esc_url_raw( $atts['buy_url'] ),
         'buy_label' => sanitize_text_field( $atts['buy_label'] ),
+        'download_url' => esc_url_raw( $atts['download_url'] ),
     ];
 
     return '';

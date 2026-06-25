@@ -7,6 +7,7 @@ export interface AudioTrack {
   cover?: string;
   buyUrl?: string;
   buyLabel?: string;
+  downloadUrl?: string;
   duration?: number;
 }
 

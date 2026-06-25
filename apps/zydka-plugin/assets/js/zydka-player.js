@@ -3119,8 +3119,9 @@
     src: "https://www.louis94.com/wp-content/uploads/2026/06/04.-New-York-Shit-feat.-Swizz-Beatz.mp3"
   };
   function normalizeTrack(track) {
-    var _a, _b, _c;
+    var _a, _b, _c, _d;
     const audioUrl = (_a = track.audioUrl) != null ? _a : track.src;
+    const downloadUrl = normalizeOptionalHttpUrl((_b = track.downloadUrl) != null ? _b : track.download_url);
     if (!audioUrl) {
       console.error(
         '[Zydka Player] Cannot play track: provide an audio URL with "audioUrl" or "src".',
@@ -3128,17 +3129,28 @@
       );
       return null;
     }
-    return {
+    return __spreadProps(__spreadValues({
       id: track.id,
       audioUrl,
       title: track.title,
       artist: track.artist,
       cover: track.cover,
       album: track.album,
-      buyUrl: (_b = track.buyUrl) != null ? _b : track.buy_url,
-      buyLabel: (_c = track.buyLabel) != null ? _c : track.buy_label,
+      buyUrl: (_c = track.buyUrl) != null ? _c : track.buy_url,
+      buyLabel: (_d = track.buyLabel) != null ? _d : track.buy_label
+    }, downloadUrl ? { downloadUrl } : {}), {
       duration: track.duration
-    };
+    });
+  }
+  function normalizeOptionalHttpUrl(value) {
+    const trimmedValue = typeof value === "string" ? value.trim() : "";
+    if (!trimmedValue) return void 0;
+    try {
+      const parsedUrl = new URL(trimmedValue, window.location.href);
+      return parsedUrl.protocol === "http:" || parsedUrl.protocol === "https:" ? trimmedValue : void 0;
+    } catch (_error) {
+      return void 0;
+    }
   }
   function normalizeQueue(tracks) {
     return tracks.reduce((queue, track) => {
@@ -3158,7 +3170,8 @@
       cover: root.dataset.cover || fallbackTrack.cover,
       album: root.dataset.album,
       buyUrl: root.dataset.buyUrl,
-      buyLabel: root.dataset.buyLabel
+      buyLabel: root.dataset.buyLabel,
+      downloadUrl: root.dataset.downloadUrl
     };
   }
   function readQueueFromRoot(root, fallbackSingleTrack) {
@@ -3392,6 +3405,12 @@
     volumeControl.append(muteButton, volumeSlider, volumeValue);
     const shareControl = document.createElement("div");
     shareControl.className = "zydka-player-share";
+    const downloadLink = document.createElement("a");
+    downloadLink.className = "zydka-player-button zydka-player-download-link";
+    downloadLink.target = "_blank";
+    downloadLink.rel = "noopener noreferrer";
+    downloadLink.textContent = "T\xE9l\xE9charger";
+    downloadLink.hidden = true;
     const favoriteButton = document.createElement("button");
     favoriteButton.className = "zydka-player-button zydka-player-icon-button zydka-player-mode-button zydka-player-favorite-button";
     favoriteButton.type = "button";
@@ -3405,7 +3424,7 @@
     shareFeedback.className = "zydka-player-share-feedback";
     shareFeedback.setAttribute("aria-live", "polite");
     shareFeedback.hidden = true;
-    shareControl.append(favoriteButton, shareButton, shareFeedback);
+    shareControl.append(downloadLink, favoriteButton, shareButton, shareFeedback);
     const queueOverlay = document.createElement("div");
     queueOverlay.className = "zydka-player-queue-overlay";
     queueOverlay.hidden = true;
@@ -3810,7 +3829,7 @@
       }))
     });
     refreshState = () => {
-      var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s;
+      var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t;
       const state = (_a = window.ZydkaPlayer) == null ? void 0 : _a.state();
       if (!state) return;
       const queue = (_c = (_b = window.ZydkaPlayer) == null ? void 0 : _b.getQueue()) != null ? _c : state.queue;
@@ -3844,6 +3863,16 @@
         buyLink.removeAttribute("href");
         buyLink.textContent = "";
         buyLink.hidden = true;
+      }
+      const downloadUrl = (_s = displayTrack == null ? void 0 : displayTrack.downloadUrl) == null ? void 0 : _s.trim();
+      if (downloadUrl) {
+        downloadLink.href = downloadUrl;
+        downloadLink.setAttribute("aria-label", `T\xE9l\xE9charger ${renderText((displayTrack == null ? void 0 : displayTrack.title) || "la track")}`);
+        downloadLink.hidden = false;
+      } else {
+        downloadLink.removeAttribute("href");
+        downloadLink.removeAttribute("aria-label");
+        downloadLink.hidden = true;
       }
       coverFallback.textContent = getCoverLabel(displayTrack != null ? displayTrack : fallbackDisplayTrack);
       requestEmbeddedCover(displayTrack);
@@ -3896,7 +3925,7 @@
         renderQueueItems(queue, currentIndex);
         renderedQueueSignature = queueSignature;
       }
-      error.textContent = (_s = state.error) != null ? _s : "";
+      error.textContent = (_t = state.error) != null ? _t : "";
       error.hidden = !state.error;
       mediaSession.refreshMetadata();
       if (state.isPlaying) {

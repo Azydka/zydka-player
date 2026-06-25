@@ -14,6 +14,8 @@ interface ZydkaTrackInput {
   buy_label?: string;
   buyUrl?: string;
   buyLabel?: string;
+  download_url?: string;
+  downloadUrl?: string;
   duration?: number;
 }
 
@@ -26,6 +28,7 @@ interface ZydkaTrack {
   album?: string;
   buyUrl?: string;
   buyLabel?: string;
+  downloadUrl?: string;
   duration?: number;
 }
 
@@ -80,6 +83,7 @@ declare global {
 
 function normalizeTrack(track: ZydkaTrackInput): ZydkaTrack | null {
   const audioUrl = track.audioUrl ?? track.src;
+  const downloadUrl = normalizeOptionalHttpUrl(track.downloadUrl ?? track.download_url);
 
   if (!audioUrl) {
     console.error(
@@ -98,8 +102,22 @@ function normalizeTrack(track: ZydkaTrackInput): ZydkaTrack | null {
     album: track.album,
     buyUrl: track.buyUrl ?? track.buy_url,
     buyLabel: track.buyLabel ?? track.buy_label,
+    ...(downloadUrl ? { downloadUrl } : {}),
     duration: track.duration,
   };
+}
+
+function normalizeOptionalHttpUrl(value: string | null | undefined): string | undefined {
+  const trimmedValue = typeof value === 'string' ? value.trim() : '';
+
+  if (!trimmedValue) return undefined;
+
+  try {
+    const parsedUrl = new URL(trimmedValue, window.location.href);
+    return parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:' ? trimmedValue : undefined;
+  } catch (_error) {
+    return undefined;
+  }
 }
 
 function normalizeQueue(tracks: ZydkaTrackInput[]): ZydkaTrack[] {
@@ -124,6 +142,7 @@ function readTrackFromRoot(root: HTMLElement): ZydkaTrackInput {
     album: root.dataset.album,
     buyUrl: root.dataset.buyUrl,
     buyLabel: root.dataset.buyLabel,
+    downloadUrl: root.dataset.downloadUrl,
   };
 }
 
@@ -412,6 +431,13 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
   const shareControl = document.createElement('div');
   shareControl.className = 'zydka-player-share';
 
+  const downloadLink = document.createElement('a');
+  downloadLink.className = 'zydka-player-button zydka-player-download-link';
+  downloadLink.target = '_blank';
+  downloadLink.rel = 'noopener noreferrer';
+  downloadLink.textContent = 'Télécharger';
+  downloadLink.hidden = true;
+
   const favoriteButton = document.createElement('button');
   favoriteButton.className = 'zydka-player-button zydka-player-icon-button zydka-player-mode-button zydka-player-favorite-button';
   favoriteButton.type = 'button';
@@ -428,7 +454,7 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
   shareFeedback.setAttribute('aria-live', 'polite');
   shareFeedback.hidden = true;
 
-  shareControl.append(favoriteButton, shareButton, shareFeedback);
+  shareControl.append(downloadLink, favoriteButton, shareButton, shareFeedback);
 
   const queueOverlay = document.createElement('div');
   queueOverlay.className = 'zydka-player-queue-overlay';
@@ -967,6 +993,18 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
       buyLink.removeAttribute('href');
       buyLink.textContent = '';
       buyLink.hidden = true;
+    }
+
+    const downloadUrl = displayTrack?.downloadUrl?.trim();
+
+    if (downloadUrl) {
+      downloadLink.href = downloadUrl;
+      downloadLink.setAttribute('aria-label', `Télécharger ${renderText(displayTrack?.title || 'la track')}`);
+      downloadLink.hidden = false;
+    } else {
+      downloadLink.removeAttribute('href');
+      downloadLink.removeAttribute('aria-label');
+      downloadLink.hidden = true;
     }
 
     coverFallback.textContent = getCoverLabel(displayTrack ?? fallbackDisplayTrack);

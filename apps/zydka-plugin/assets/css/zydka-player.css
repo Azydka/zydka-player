@@ -119,6 +119,7 @@
 .zydka-player-eyebrow,
 .zydka-player-title,
 .zydka-player-artist,
+.zydka-player-track-details,
 .zydka-player-counter,
 .zydka-player-status,
 .zydka-player-error {
@@ -163,6 +164,20 @@
   font-size: 16px;
   font-weight: 650;
   line-height: 1.4;
+}
+
+.zydka-player-track-details {
+  margin-top: 7px;
+  max-width: 44em;
+  overflow-wrap: anywhere;
+  color: rgba(107, 98, 89, 0.78);
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.zydka-player-track-details[hidden] {
+  display: none;
 }
 
 .zydka-player-buy-link[hidden] {
@@ -430,28 +445,81 @@
 }
 
 .zydka-player-progress {
-  position: relative;
+  --zydka-progress-percent: 0%;
   display: block;
   width: 100%;
-  height: 18px;
+  min-width: 0;
+  height: 28px;
   padding: 0;
-  overflow: hidden;
+  border: 0;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.zydka-player-progress::-webkit-slider-runnable-track {
+  height: 10px;
   border: 1px solid rgba(23, 23, 23, 0.06);
   border-radius: 999px;
-  background: #e7dfd5;
-  cursor: pointer;
+  background:
+    linear-gradient(
+      90deg,
+      var(--zydka-red-dark) 0%,
+      var(--zydka-red) var(--zydka-progress-percent),
+      #e7dfd5 var(--zydka-progress-percent),
+      #e7dfd5 100%
+    );
   box-shadow: inset 0 2px 6px rgba(31, 24, 16, 0.08);
 }
 
-.zydka-player-progress-fill {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 0%;
-  border-radius: inherit;
-  background:
-    linear-gradient(90deg, var(--zydka-red-dark), var(--zydka-red)),
-    var(--zydka-red);
-  box-shadow: 0 0 18px rgba(189, 23, 30, 0.26);
+.zydka-player-progress::-webkit-slider-thumb {
+  width: 22px;
+  height: 22px;
+  margin-top: -7px;
+  border: 3px solid #ffffff;
+  border-radius: 999px;
+  appearance: none;
+  background: var(--zydka-red);
+  box-shadow:
+    0 5px 14px rgba(31, 24, 16, 0.16),
+    0 0 0 1px rgba(147, 17, 22, 0.18);
+}
+
+.zydka-player-progress::-moz-range-track {
+  height: 10px;
+  border: 1px solid rgba(23, 23, 23, 0.06);
+  border-radius: 999px;
+  background: #e7dfd5;
+  box-shadow: inset 0 2px 6px rgba(31, 24, 16, 0.08);
+}
+
+.zydka-player-progress::-moz-range-progress {
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--zydka-red-dark), var(--zydka-red));
+}
+
+.zydka-player-progress::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: 3px solid #ffffff;
+  border-radius: 999px;
+  background: var(--zydka-red);
+  box-shadow:
+    0 5px 14px rgba(31, 24, 16, 0.16),
+    0 0 0 1px rgba(147, 17, 22, 0.18);
+}
+
+.zydka-player-progress--dragging::-webkit-slider-runnable-track {
+  box-shadow:
+    inset 0 2px 6px rgba(31, 24, 16, 0.08),
+    0 0 0 3px rgba(189, 23, 30, 0.1);
+}
+
+.zydka-player-progress--disabled {
+  cursor: default;
+  opacity: 0.62;
 }
 
 .zydka-player-volume {

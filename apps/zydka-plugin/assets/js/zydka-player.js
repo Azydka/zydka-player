@@ -3009,28 +3009,52 @@
     if (normalizedSrc.endsWith(".jpg") || normalizedSrc.endsWith(".jpeg")) return "image/jpeg";
     return void 0;
   }
-  function createArtwork(src) {
-    if (!(src == null ? void 0 : src.trim())) return void 0;
+  function createArtworkItem(src, sizes) {
+    const normalizedSrc = src == null ? void 0 : src.trim();
+    if (!normalizedSrc) return null;
     const artwork = {
-      src: src.trim(),
-      sizes: "512x512"
+      src: normalizedSrc,
+      sizes
     };
     const type = getArtworkType(artwork.src);
     if (type) {
       artwork.type = type;
     }
-    return [artwork];
+    return artwork;
+  }
+  function createArtwork(track, fallbackSrc) {
+    var _a, _b, _c, _d, _e;
+    const artworkItems = [
+      createArtworkItem(track.cover512, "512x512"),
+      createArtworkItem(track.cover1024, "1024x1024"),
+      !((_a = track.cover512) == null ? void 0 : _a.trim()) && !((_b = track.cover1024) == null ? void 0 : _b.trim()) ? createArtworkItem(track.cover, "512x512") : null,
+      !((_c = track.cover) == null ? void 0 : _c.trim()) && !((_d = track.cover512) == null ? void 0 : _d.trim()) && !((_e = track.cover1024) == null ? void 0 : _e.trim()) ? createArtworkItem(fallbackSrc != null ? fallbackSrc : void 0, "512x512") : null
+    ];
+    const seenSources = /* @__PURE__ */ new Set();
+    const artwork = artworkItems.reduce((items, item) => {
+      if (!item || seenSources.has(item.src)) {
+        return items;
+      }
+      seenSources.add(item.src);
+      items.push(item);
+      return items;
+    }, []);
+    return artwork.length > 0 ? artwork : void 0;
   }
   function getValidPositionState(options) {
     const duration = options.getDuration();
-    if (!Number.isFinite(duration) || duration <= 0) {
+    const playbackRate = 1;
+    if (!Number.isFinite(duration) || duration <= 0 || !Number.isFinite(playbackRate) || playbackRate <= 0) {
       return null;
     }
     const currentTime = options.getCurrentTime();
     const position = Number.isFinite(currentTime) ? Math.min(duration, Math.max(0, currentTime)) : 0;
+    if (!Number.isFinite(position)) {
+      return null;
+    }
     return {
       duration,
-      playbackRate: 1,
+      playbackRate,
       position
     };
   }
@@ -3038,6 +3062,9 @@
     safeRun(() => {
       mediaSession.playbackState = isPlaying ? "playing" : "paused";
     });
+  }
+  function canPublishPositionState() {
+    return typeof document === "undefined" || document.visibilityState === "visible";
   }
   function setupMediaSession(options) {
     const mediaSession = getMediaSession();
@@ -3048,7 +3075,11 @@
     let metadataSignature = "";
     let lastPositionUpdate = 0;
     const refreshPosition = () => {
+      lastPositionUpdate = Date.now();
       setPlaybackState(mediaSession, options.isPlaying());
+      if (!canPublishPositionState()) {
+        return;
+      }
       const positionState = getValidPositionState(options);
       if (!positionState || typeof mediaSession.setPositionState !== "function") {
         return;
@@ -3062,7 +3093,7 @@
       if (!mediaMetadata) return;
       const track = options.getCurrentTrack();
       if (!track) return;
-      const artwork = createArtwork(options.getArtwork(track));
+      const artwork = createArtwork(track, options.getArtwork(track));
       const metadata = {
         title: cleanText(track.title, "Zydka Player"),
         artist: cleanText(track.artist, "Louis94"),
@@ -3088,22 +3119,31 @@
       lastPositionUpdate = now;
       refreshPosition();
     };
-    const setHandler = (action, handler) => {
+    const setHandler = (action, handler, handlerOptions = {}) => {
+      var _a;
+      const shouldRefreshPosition = (_a = handlerOptions.refreshPositionAfterAction) != null ? _a : true;
       safeRun(() => {
-        var _a;
-        (_a = mediaSession.setActionHandler) == null ? void 0 : _a.call(mediaSession, action, () => {
-          safeRun(handler);
+        var _a2;
+        (_a2 = mediaSession.setActionHandler) == null ? void 0 : _a2.call(mediaSession, action, (details) => {
+          safeRun(() => handler(details != null ? details : {}));
           window.setTimeout(() => {
             refreshMetadata();
-            refreshPosition();
+            if (shouldRefreshPosition) {
+              refreshPosition();
+            } else {
+              setPlaybackState(mediaSession, options.isPlaying());
+            }
           }, 0);
         });
       });
     };
-    setHandler("play", options.play);
-    setHandler("pause", options.pause);
-    setHandler("previoustrack", options.previous);
-    setHandler("nexttrack", options.next);
+    setHandler("play", () => options.play());
+    setHandler("pause", () => options.pause());
+    setHandler("previoustrack", () => options.previous());
+    setHandler("nexttrack", () => options.next());
+    setHandler("seekbackward", () => void 0, { refreshPositionAfterAction: false });
+    setHandler("seekforward", () => void 0, { refreshPositionAfterAction: false });
+    setHandler("seekto", () => void 0, { refreshPositionAfterAction: false });
     return {
       refreshMetadata,
       refreshPosition,
@@ -3118,8 +3158,12 @@
     artist: "Atelier Zydka",
     src: "https://www.louis94.com/wp-content/uploads/2026/06/04.-New-York-Shit-feat.-Swizz-Beatz.mp3"
   };
+  var zydkaPlayerVersion = "0.6.3";
+  var zydkaAnalyticsMetadataVersion = "1.1";
+  var zydkaAnalyticsDataLayerEvent = "zydka_player_event";
+  var zydkaAnalyticsSessionStorageKey = "zydkaPlayerAnalyticsSessionToken";
   function normalizeTrack(track) {
-    var _a, _b, _c, _d;
+    var _a, _b, _c, _d, _e, _f, _g, _h;
     const audioUrl = (_a = track.audioUrl) != null ? _a : track.src;
     const downloadUrl = normalizeOptionalHttpUrl((_b = track.downloadUrl) != null ? _b : track.download_url);
     if (!audioUrl) {
@@ -3132,12 +3176,25 @@
     return __spreadProps(__spreadValues({
       id: track.id,
       audioUrl,
+      type: track.type,
+      trackType: (_d = (_c = track.trackType) != null ? _c : track.track_type) != null ? _d : track.type,
       title: track.title,
       artist: track.artist,
       cover: track.cover,
+      cover512: track.cover512,
+      cover1024: track.cover1024,
       album: track.album,
-      buyUrl: (_c = track.buyUrl) != null ? _c : track.buy_url,
-      buyLabel: (_d = track.buyLabel) != null ? _d : track.buy_label
+      bpm: track.bpm,
+      mood: track.mood,
+      style: track.style,
+      key: track.key,
+      productId: (_e = track.productId) != null ? _e : track.product_id,
+      category: track.category,
+      licenseType: (_f = track.licenseType) != null ? _f : track.license_type,
+      price: track.price,
+      currency: track.currency,
+      buyUrl: (_g = track.buyUrl) != null ? _g : track.buy_url,
+      buyLabel: (_h = track.buyLabel) != null ? _h : track.buy_label
     }, downloadUrl ? { downloadUrl } : {}), {
       duration: track.duration
     });
@@ -3162,13 +3219,27 @@
     }, []);
   }
   function readTrackFromRoot(root) {
+    var _a, _b;
     return {
       id: root.dataset.trackId || fallbackTrack.id,
       title: root.dataset.title || fallbackTrack.title,
       artist: root.dataset.artist || fallbackTrack.artist,
       src: root.dataset.src || fallbackTrack.src,
       cover: root.dataset.cover || fallbackTrack.cover,
+      cover512: (_a = root.dataset.cover512) != null ? _a : root.dataset["cover-512"],
+      cover1024: (_b = root.dataset.cover1024) != null ? _b : root.dataset["cover-1024"],
       album: root.dataset.album,
+      bpm: root.dataset.bpm,
+      mood: root.dataset.mood,
+      style: root.dataset.style,
+      type: root.dataset.type,
+      trackType: root.dataset.trackType,
+      key: root.dataset.key,
+      productId: root.dataset.productId,
+      category: root.dataset.category,
+      licenseType: root.dataset.licenseType,
+      price: root.dataset.price,
+      currency: root.dataset.currency,
       buyUrl: root.dataset.buyUrl,
       buyLabel: root.dataset.buyLabel,
       downloadUrl: root.dataset.downloadUrl
@@ -3188,6 +3259,146 @@
     }
     return [fallbackSingleTrack];
   }
+  function readManagerQueueFromRoot(root) {
+    if (!root.matches('#zydka-player-root[data-source="manager-playlist"]')) {
+      return null;
+    }
+    if (!root.dataset.tracks) {
+      console.error("[Zydka Player] Manager playlist is missing data-tracks.");
+      return null;
+    }
+    try {
+      const parsedTracks = JSON.parse(root.dataset.tracks);
+      if (!Array.isArray(parsedTracks) || parsedTracks.length === 0) {
+        console.error("[Zydka Player] Manager playlist data-tracks must be a non-empty array.");
+        return null;
+      }
+      const playableTracks = parsedTracks.filter((track) => {
+        if (!track || typeof track !== "object") return false;
+        const candidate = track;
+        return Boolean(candidate.audioUrl || candidate.src);
+      });
+      if (playableTracks.length === 0) {
+        console.error("[Zydka Player] Manager playlist does not contain any playable tracks.");
+        return null;
+      }
+      return playableTracks;
+    } catch (error) {
+      console.error("[Zydka Player] Cannot parse manager playlist tracks.", error);
+      return null;
+    }
+  }
+  function getAnalyticsString(value) {
+    return value === void 0 || value === null ? "" : String(value);
+  }
+  function getAnalyticsNumber(value) {
+    return Number.isFinite(value) && value !== null && value !== void 0 ? Math.max(0, value) : 0;
+  }
+  function getZydkaAnalyticsSessionToken() {
+    var _a;
+    try {
+      const storedToken = window.sessionStorage.getItem(zydkaAnalyticsSessionStorageKey);
+      if (storedToken) return storedToken;
+      const generatedToken = typeof ((_a = window.crypto) == null ? void 0 : _a.randomUUID) === "function" ? window.crypto.randomUUID() : `anon-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      window.sessionStorage.setItem(zydkaAnalyticsSessionStorageKey, generatedToken);
+      return generatedToken;
+    } catch (_error) {
+      return "anonymous-session-token";
+    }
+  }
+  function getReferrerCategory() {
+    try {
+      if (!document.referrer) return "";
+      const referrerUrl = new URL(document.referrer);
+      return referrerUrl.hostname === window.location.hostname ? "internal" : "external";
+    } catch (_error) {
+      return "";
+    }
+  }
+  function getAnalyticsEndpoint() {
+    var _a, _b, _c;
+    return ((_a = window.zydkaPlayerAnalyticsEndpoint) == null ? void 0 : _a.trim()) || ((_c = (_b = window.zydkaPlayerAnalytics) == null ? void 0 : _b.endpoint) == null ? void 0 : _c.trim()) || "";
+  }
+  function getTrackSignature(track) {
+    if (!track) return "";
+    return `${getAnalyticsString(track.id)}::${track.audioUrl}`;
+  }
+  function getPlayerInstance(root) {
+    const context = root.dataset.source || "shortcode";
+    const playlistId = root.dataset.playlistId;
+    return playlistId ? `${context}-${playlistId}` : `${context}-${root.dataset.trackId || "single"}`;
+  }
+  function buildZydkaAnalyticsPayload(options) {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r;
+    const { root, eventType, track, playheadSeconds = 0, durationSeconds = 0, extra = {} } = options;
+    const context = root.dataset.source || "shortcode";
+    const playlistId = root.dataset.playlistId || "";
+    return __spreadValues({
+      event_type: eventType,
+      track_id: getAnalyticsString((_a = track == null ? void 0 : track.id) != null ? _a : root.dataset.trackId),
+      track_title: getAnalyticsString((_b = track == null ? void 0 : track.title) != null ? _b : root.dataset.title),
+      track_type: getAnalyticsString((_e = (_d = (_c = track == null ? void 0 : track.trackType) != null ? _c : track == null ? void 0 : track.type) != null ? _d : root.dataset.trackType) != null ? _e : root.dataset.type),
+      artist: getAnalyticsString((_f = track == null ? void 0 : track.artist) != null ? _f : root.dataset.artist),
+      album: getAnalyticsString((_g = track == null ? void 0 : track.album) != null ? _g : root.dataset.album),
+      bpm: (_i = (_h = track == null ? void 0 : track.bpm) != null ? _h : root.dataset.bpm) != null ? _i : "",
+      mood: getAnalyticsString((_j = track == null ? void 0 : track.mood) != null ? _j : root.dataset.mood),
+      style: getAnalyticsString((_k = track == null ? void 0 : track.style) != null ? _k : root.dataset.style),
+      key: getAnalyticsString((_l = track == null ? void 0 : track.key) != null ? _l : root.dataset.key),
+      product_id: getAnalyticsString((_m = track == null ? void 0 : track.productId) != null ? _m : root.dataset.productId),
+      category: getAnalyticsString((_n = track == null ? void 0 : track.category) != null ? _n : root.dataset.category),
+      license_type: getAnalyticsString((_o = track == null ? void 0 : track.licenseType) != null ? _o : root.dataset.licenseType),
+      price: getAnalyticsString((_p = track == null ? void 0 : track.price) != null ? _p : root.dataset.price),
+      currency: getAnalyticsString((_r = (_q = track == null ? void 0 : track.currency) != null ? _q : root.dataset.currency) != null ? _r : "EUR") || "EUR",
+      context,
+      source: window.location.hostname || "louis94.com",
+      player_mode: "zydka-player",
+      player_instance: getPlayerInstance(root),
+      playlist_id: playlistId,
+      session_token: getZydkaAnalyticsSessionToken(),
+      playhead_seconds: Math.round(getAnalyticsNumber(playheadSeconds)),
+      duration_seconds: Math.round(getAnalyticsNumber(durationSeconds)),
+      page_url: window.location.href,
+      referrer: document.referrer || "",
+      referrer_category: getReferrerCategory(),
+      metadata_version: zydkaAnalyticsMetadataVersion,
+      player_version: zydkaPlayerVersion
+    }, extra);
+  }
+  function emitZydkaAnalyticsEvent(options) {
+    const payload = buildZydkaAnalyticsPayload(options);
+    try {
+      if (Array.isArray(window.dataLayer)) {
+        window.dataLayer.push({
+          event: zydkaAnalyticsDataLayerEvent,
+          zydka: payload
+        });
+      }
+    } catch (_error) {
+    }
+    try {
+      const endpoint = getAnalyticsEndpoint();
+      if (!endpoint) return;
+      const body = JSON.stringify(payload);
+      if (typeof navigator.sendBeacon === "function") {
+        const sent = navigator.sendBeacon(endpoint, new Blob([body], { type: "application/json" }));
+        if (sent) {
+          return;
+        }
+      }
+      if (typeof fetch !== "function") {
+        return;
+      }
+      void fetch(endpoint, {
+        method: "POST",
+        keepalive: true,
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body
+      }).catch(() => void 0);
+    } catch (_error) {
+    }
+  }
   function renderText(value) {
     return String(value != null ? value : "");
   }
@@ -3196,12 +3407,40 @@
     return String(label).trim().charAt(0).toUpperCase() || "Z";
   }
   function hasExplicitCover(track) {
-    var _a;
-    return Boolean((_a = track == null ? void 0 : track.cover) == null ? void 0 : _a.trim());
+    return getCoverCandidates(track).length > 0;
   }
   function getBuyLabel(track) {
     var _a;
     return ((_a = track == null ? void 0 : track.buyLabel) == null ? void 0 : _a.trim()) || "Voir le projet";
+  }
+  function getCoverCandidates(track) {
+    if (!track) return [];
+    const seenUrls = /* @__PURE__ */ new Set();
+    return [track.cover, track.cover512, track.cover1024].reduce((urls, value) => {
+      const coverUrl = value == null ? void 0 : value.trim();
+      if (coverUrl && !seenUrls.has(coverUrl)) {
+        seenUrls.add(coverUrl);
+        urls.push(coverUrl);
+      }
+      return urls;
+    }, []);
+  }
+  function getTrackMetadataItems(track) {
+    var _a, _b, _c;
+    const bpmValue = typeof (track == null ? void 0 : track.bpm) === "number" ? String(track.bpm) : (_a = track == null ? void 0 : track.bpm) == null ? void 0 : _a.trim();
+    const moodValue = (_b = track == null ? void 0 : track.mood) == null ? void 0 : _b.trim();
+    const styleValue = (_c = track == null ? void 0 : track.style) == null ? void 0 : _c.trim();
+    const metadataItems = [];
+    if (bpmValue) {
+      metadataItems.push(`${bpmValue} BPM`);
+    }
+    if (moodValue) {
+      metadataItems.push(moodValue);
+    }
+    if (styleValue) {
+      metadataItems.push(styleValue);
+    }
+    return metadataItems;
   }
   function formatTime(seconds) {
     if (!Number.isFinite(seconds) || seconds <= 0) return "0:00";
@@ -3209,6 +3448,9 @@
     const minutes = Math.floor(totalSeconds / 60);
     const remainingSeconds = totalSeconds % 60;
     return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
+  }
+  function formatDurationTime(seconds) {
+    return Number.isFinite(seconds) && seconds > 0 ? formatTime(seconds) : "--:--";
   }
   var favoritesStorageKey = "zydkaPlayerFavorites";
   var controlIcons = {
@@ -3305,10 +3547,14 @@
     const artist = document.createElement("p");
     artist.className = "zydka-player-artist";
     artist.textContent = renderText(fallbackDisplayTrack.artist);
+    const trackDetails = document.createElement("p");
+    trackDetails.className = "zydka-player-track-details";
+    trackDetails.hidden = true;
     const buyLink = document.createElement("a");
     buyLink.className = "zydka-player-buy-link";
     buyLink.target = "_blank";
     buyLink.rel = "noopener noreferrer";
+    buyLink.dataset.zydkaAnalytics = "license_cta";
     buyLink.hidden = true;
     const cover = document.createElement("div");
     cover.className = "zydka-player-cover";
@@ -3332,7 +3578,7 @@
     const statusValue = document.createElement("span");
     statusValue.textContent = "idle";
     status.append(statusValue);
-    textBlock.append(eyebrow, title, artist, buyLink);
+    textBlock.append(eyebrow, title, artist, trackDetails, buyLink);
     header.append(textBlock, headerAside);
     const actions = document.createElement("div");
     actions.className = "zydka-player-actions";
@@ -3370,20 +3616,19 @@
     const currentTime = document.createElement("span");
     currentTime.className = "zydka-player-time";
     currentTime.textContent = "0:00";
-    const progress = document.createElement("button");
+    const progress = document.createElement("input");
     progress.className = "zydka-player-progress";
-    progress.type = "button";
-    progress.setAttribute("aria-label", "Seek");
-    progress.setAttribute("aria-valuemin", "0");
-    progress.setAttribute("aria-valuemax", "100");
-    progress.setAttribute("aria-valuenow", "0");
-    progress.setAttribute("role", "slider");
-    const progressFill = document.createElement("span");
-    progressFill.className = "zydka-player-progress-fill";
-    progress.append(progressFill);
+    progress.type = "range";
+    progress.min = "0";
+    progress.max = "0";
+    progress.step = "0.01";
+    progress.value = "0";
+    progress.setAttribute("aria-label", "Progression du morceau");
+    progress.setAttribute("aria-valuetext", "0:00 / --:--");
+    progress.disabled = true;
     const duration = document.createElement("span");
     duration.className = "zydka-player-time";
-    duration.textContent = "0:00";
+    duration.textContent = "--:--";
     timeline.append(currentTime, progress, duration);
     const volumeControl = document.createElement("div");
     volumeControl.className = "zydka-player-volume";
@@ -3410,6 +3655,7 @@
     downloadLink.target = "_blank";
     downloadLink.rel = "noopener noreferrer";
     downloadLink.textContent = "T\xE9l\xE9charger";
+    downloadLink.dataset.zydkaAnalytics = "download_cta";
     downloadLink.hidden = true;
     const favoriteButton = document.createElement("button");
     favoriteButton.className = "zydka-player-button zydka-player-icon-button zydka-player-mode-button zydka-player-favorite-button";
@@ -3477,6 +3723,12 @@
     let handledEndedSignature = "";
     let shareFeedbackTimer;
     let favoriteKeys = /* @__PURE__ */ new Set();
+    let analyticsTrackState = null;
+    let mediaSession = null;
+    let isUserSeeking = false;
+    let pendingSeekSeconds = null;
+    let shouldResumeAfterSeek = false;
+    let seekReleaseTimer;
     const readFavoriteKeys = () => {
       try {
         const storedFavorites = window.localStorage.getItem(favoritesStorageKey);
@@ -3520,11 +3772,107 @@
       saveFavoriteKeys();
       return favoriteKeys.has(favoriteKey);
     };
+    const emitPlaybackAnalyticsEvent = (eventType, track, playheadSeconds, durationSeconds, extra = {}) => {
+      emitZydkaAnalyticsEvent({
+        root,
+        eventType,
+        track,
+        playheadSeconds,
+        durationSeconds,
+        extra
+      });
+    };
+    const emitTrackedStop = (reason, extra = {}) => {
+      if (!analyticsTrackState || !analyticsTrackState.hasStarted || analyticsTrackState.hasCompleted || analyticsTrackState.hasStopped) {
+        return;
+      }
+      analyticsTrackState.hasStopped = true;
+      emitPlaybackAnalyticsEvent(
+        "play_stopped",
+        analyticsTrackState.track,
+        analyticsTrackState.lastPosition,
+        analyticsTrackState.lastDuration,
+        __spreadValues({ stop_reason: reason }, extra)
+      );
+    };
+    const processPlaybackAnalytics = (state, currentTrack, position, trackDuration) => {
+      const signature = getTrackSignature(currentTrack);
+      if (analyticsTrackState && signature !== analyticsTrackState.signature) {
+        emitTrackedStop("track_changed", {
+          next_track_id: getAnalyticsString(currentTrack == null ? void 0 : currentTrack.id)
+        });
+        analyticsTrackState = null;
+      }
+      if (!currentTrack || !signature) return;
+      if (!analyticsTrackState) {
+        analyticsTrackState = {
+          signature,
+          track: currentTrack,
+          hasStarted: false,
+          hasSentCheckpoint: false,
+          hasCompleted: false,
+          hasStopped: false,
+          wasPlaying: false,
+          lastPosition: 0,
+          lastDuration: 0,
+          listenedSeconds: 0,
+          lastPlaybackPosition: 0,
+          lastPlaybackClock: 0
+        };
+      } else {
+        analyticsTrackState.track = currentTrack;
+      }
+      analyticsTrackState.lastPosition = position;
+      analyticsTrackState.lastDuration = trackDuration;
+      const now = Date.now();
+      const isActivelyPlaying = state.status === "playing" && state.isPlaying;
+      if (isActivelyPlaying) {
+        if (analyticsTrackState.lastPlaybackClock > 0) {
+          const elapsedSeconds = Math.max(0, (now - analyticsTrackState.lastPlaybackClock) / 1e3);
+          const positionDelta = position - analyticsTrackState.lastPlaybackPosition;
+          const maxContinuousDelta = elapsedSeconds + 1.5;
+          if (positionDelta > 0 && positionDelta <= maxContinuousDelta) {
+            analyticsTrackState.listenedSeconds += positionDelta;
+          }
+        }
+        analyticsTrackState.lastPlaybackClock = now;
+        analyticsTrackState.lastPlaybackPosition = position;
+      } else {
+        analyticsTrackState.lastPlaybackClock = 0;
+        analyticsTrackState.lastPlaybackPosition = position;
+      }
+      if (state.status === "playing" && state.isPlaying && !analyticsTrackState.hasStarted) {
+        analyticsTrackState.hasStarted = true;
+        emitPlaybackAnalyticsEvent("play_started", currentTrack, position, trackDuration);
+      }
+      if (analyticsTrackState.hasStarted && trackDuration > 0) {
+        const checkpointSeconds = trackDuration < 60 ? trackDuration * 0.5 : 30;
+        if (!analyticsTrackState.hasSentCheckpoint && analyticsTrackState.listenedSeconds >= checkpointSeconds) {
+          analyticsTrackState.hasSentCheckpoint = true;
+          emitPlaybackAnalyticsEvent("play_30s_checkpoint", currentTrack, position, trackDuration, {
+            checkpoint_seconds: Math.round(checkpointSeconds)
+          });
+        }
+        if (!analyticsTrackState.hasCompleted && (state.status === "ended" || analyticsTrackState.listenedSeconds >= trackDuration * 0.9)) {
+          analyticsTrackState.hasCompleted = true;
+          emitPlaybackAnalyticsEvent("play_completed", currentTrack, position, trackDuration);
+        }
+      } else if (analyticsTrackState.hasStarted && state.status === "ended" && !analyticsTrackState.hasCompleted) {
+        analyticsTrackState.hasCompleted = true;
+        emitPlaybackAnalyticsEvent("play_completed", currentTrack, position, trackDuration);
+      }
+      if (analyticsTrackState.hasStarted && analyticsTrackState.wasPlaying && !state.isPlaying && state.status !== "ended") {
+        emitTrackedStop(state.status || "stopped");
+      }
+      analyticsTrackState.wasPlaying = state.isPlaying;
+    };
     const getDisplayCoverUrl = (track) => {
-      var _a, _b;
+      var _a;
       if (!track) return null;
-      if (hasExplicitCover(track)) return (_a = track.cover) != null ? _a : null;
-      return (_b = embeddedCoverUrls.get(track.audioUrl)) != null ? _b : null;
+      const explicitCover = getCoverCandidates(track).find((coverUrl) => !failedCoverUrls.has(coverUrl));
+      if (explicitCover) return explicitCover;
+      if (hasExplicitCover(track)) return null;
+      return (_a = embeddedCoverUrls.get(track.audioUrl)) != null ? _a : null;
     };
     const requestEmbeddedCover = (track) => {
       if (!track || hasExplicitCover(track) || requestedEmbeddedCoverUrls.has(track.audioUrl)) {
@@ -3686,7 +4034,7 @@
         playAtIndex(0, { resetShuffleHistory: false });
       }
     };
-    const mediaSession = setupMediaSession({
+    mediaSession = setupMediaSession({
       getCurrentTrack: () => {
         var _a, _b;
         return (_b = (_a = window.ZydkaPlayer) == null ? void 0 : _a.state().currentTrack) != null ? _b : null;
@@ -3702,6 +4050,9 @@
       },
       next: () => {
         playNextTrack();
+      },
+      seek: (seconds) => {
+        commitSeek(seconds);
       },
       getCurrentTime: () => {
         var _a, _b;
@@ -3785,6 +4136,7 @@
           thumbImage.removeAttribute("src");
           thumbImage.hidden = true;
           thumbFallback.hidden = false;
+          refreshState();
         });
         thumb.append(thumbImage, thumbFallback);
         const meta = document.createElement("span");
@@ -3837,7 +4189,13 @@
       const displayTrack = (_g = (_f = state.currentTrack) != null ? _f : queue[currentIndex]) != null ? _g : normalizeTrack(fallbackDisplayTrack);
       const position = (_i = (_h = window.ZydkaPlayer) == null ? void 0 : _h.getCurrentTime()) != null ? _i : state.position;
       const trackDuration = (_k = (_j = window.ZydkaPlayer) == null ? void 0 : _j.getDuration()) != null ? _k : state.duration;
-      const progressPercent = trackDuration > 0 ? Math.min(100, position / trackDuration * 100) : 0;
+      const hasKnownDuration = Number.isFinite(trackDuration) && trackDuration > 0;
+      const audioDisplayPosition = Math.max(
+        0,
+        hasKnownDuration ? Math.min(trackDuration, Number.isFinite(position) ? position : 0) : Number.isFinite(position) ? position : 0
+      );
+      const displayPosition = pendingSeekSeconds !== null && hasKnownDuration ? Math.min(trackDuration, Math.max(0, pendingSeekSeconds)) : audioDisplayPosition;
+      const progressPercent = hasKnownDuration ? Math.min(100, displayPosition / trackDuration * 100) : 0;
       const displayIndex = queue.length > 0 ? Math.max(0, currentIndex) + 1 : 0;
       const volume = (_m = (_l = window.ZydkaPlayer) == null ? void 0 : _l.getVolume()) != null ? _m : state.volume;
       const muted = (_o = (_n = window.ZydkaPlayer) == null ? void 0 : _n.isMuted()) != null ? _o : state.muted;
@@ -3854,6 +4212,9 @@
       card.className = `zydka-player-card zydka-player-state-${state.status}`;
       title.textContent = renderText((_p = displayTrack == null ? void 0 : displayTrack.title) != null ? _p : fallbackDisplayTrack.title);
       artist.textContent = renderText((_q = displayTrack == null ? void 0 : displayTrack.artist) != null ? _q : fallbackDisplayTrack.artist);
+      const metadataItems = getTrackMetadataItems(displayTrack);
+      trackDetails.textContent = metadataItems.join(" \xB7 ");
+      trackDetails.hidden = metadataItems.length === 0;
       const buyUrl = (_r = displayTrack == null ? void 0 : displayTrack.buyUrl) == null ? void 0 : _r.trim();
       if (buyUrl) {
         buyLink.href = buyUrl;
@@ -3911,10 +4272,17 @@
       toggleButton.classList.toggle("zydka-player-toggle-button--playing", state.isPlaying);
       setIconButton(toggleButton, state.isPlaying ? "Pause" : "Play", state.isPlaying ? "pause" : "play");
       statusValue.textContent = state.status;
-      currentTime.textContent = formatTime(position);
-      duration.textContent = formatTime(trackDuration);
-      progressFill.style.width = `${progressPercent}%`;
-      progress.setAttribute("aria-valuenow", String(Math.round(progressPercent)));
+      currentTime.textContent = formatTime(displayPosition);
+      duration.textContent = formatDurationTime(trackDuration);
+      progress.max = hasKnownDuration ? String(trackDuration) : "0";
+      progress.value = String(displayPosition);
+      progress.disabled = !hasKnownDuration;
+      progress.style.setProperty("--zydka-progress-percent", `${progressPercent}%`);
+      progress.classList.toggle("zydka-player-progress--disabled", !hasKnownDuration);
+      progress.setAttribute(
+        "aria-valuetext",
+        `${formatTime(displayPosition)} / ${formatDurationTime(trackDuration)}`
+      );
       volumeSlider.value = String(volume);
       volumeValue.textContent = `${Math.round(volume * 100)}%`;
       volumeControl.classList.toggle("zydka-player-volume--muted", muted);
@@ -3927,12 +4295,15 @@
       }
       error.textContent = (_t = state.error) != null ? _t : "";
       error.hidden = !state.error;
-      mediaSession.refreshMetadata();
-      if (state.isPlaying) {
-        mediaSession.refreshPositionThrottled();
-      } else {
-        mediaSession.refreshPosition();
+      mediaSession == null ? void 0 : mediaSession.refreshMetadata();
+      if (!isUserSeeking) {
+        if (state.isPlaying) {
+          mediaSession == null ? void 0 : mediaSession.refreshPositionThrottled();
+        } else {
+          mediaSession == null ? void 0 : mediaSession.refreshPosition();
+        }
       }
+      processPlaybackAnalytics(state, state.currentTrack, audioDisplayPosition, trackDuration);
       handleEndedPlayback(state, queue, currentIndex);
     };
     coverImage.addEventListener("error", () => {
@@ -3943,6 +4314,7 @@
       coverImage.removeAttribute("src");
       coverImage.hidden = true;
       coverFallback.hidden = false;
+      refreshState();
     });
     previousButton.addEventListener("click", () => {
       playPreviousTrack();
@@ -3983,6 +4355,34 @@
       toggleFavoriteTrack(displayTrack);
       refreshState();
     });
+    root.addEventListener(
+      "click",
+      (event) => {
+        var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n;
+        const target = event.target instanceof Element ? event.target.closest(
+          '[data-zydka-analytics="license_cta"], [data-zydka-analytics="download_cta"], .zydka-player-download-link, .zydka-player-buy-link'
+        ) : null;
+        if (!target) return;
+        const analyticsType = target.dataset.zydkaAnalytics || (target.classList.contains("zydka-player-download-link") ? "download_cta" : "license_cta");
+        const state = (_a = window.ZydkaPlayer) == null ? void 0 : _a.state();
+        const queue = (_d = (_c = (_b = window.ZydkaPlayer) == null ? void 0 : _b.getQueue()) != null ? _c : state == null ? void 0 : state.queue) != null ? _d : [];
+        const currentIndex = (_g = (_f = (_e = window.ZydkaPlayer) == null ? void 0 : _e.getCurrentIndex()) != null ? _f : state == null ? void 0 : state.currentIndex) != null ? _g : -1;
+        const displayTrack = (_i = (_h = state == null ? void 0 : state.currentTrack) != null ? _h : queue[currentIndex]) != null ? _i : normalizeTrack(fallbackDisplayTrack);
+        const ctaUrl = target instanceof HTMLAnchorElement ? target.href : "";
+        emitZydkaAnalyticsEvent({
+          root,
+          eventType: analyticsType === "download_cta" ? "download_cta_clicked" : "license_cta_clicked",
+          track: displayTrack,
+          playheadSeconds: (_k = (_j = window.ZydkaPlayer) == null ? void 0 : _j.getCurrentTime()) != null ? _k : 0,
+          durationSeconds: (_m = (_l = window.ZydkaPlayer) == null ? void 0 : _l.getDuration()) != null ? _m : 0,
+          extra: {
+            cta_label: ((_n = target.textContent) == null ? void 0 : _n.trim()) || target.getAttribute("aria-label") || "",
+            cta_url: ctaUrl
+          }
+        });
+      },
+      { capture: true }
+    );
     queueButton.addEventListener("click", () => {
       setQueueOpen(!isQueueOpen);
     });
@@ -4025,25 +4425,149 @@
       }
       refreshState();
     });
-    progress.addEventListener("click", (event) => {
-      var _a, _b, _c;
+    function getSeekDuration() {
+      var _a, _b;
       const trackDuration = (_b = (_a = window.ZydkaPlayer) == null ? void 0 : _a.getDuration()) != null ? _b : 0;
-      if (trackDuration <= 0) return;
-      const rect = progress.getBoundingClientRect();
-      const ratio = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
-      (_c = window.ZydkaPlayer) == null ? void 0 : _c.seek(trackDuration * ratio);
+      return Number.isFinite(trackDuration) && trackDuration > 0 ? trackDuration : 0;
+    }
+    function clampSeekSeconds(seconds) {
+      const trackDuration = getSeekDuration();
+      if (trackDuration <= 0 || !Number.isFinite(seconds)) return null;
+      return Math.min(trackDuration, Math.max(0, seconds));
+    }
+    function setPendingSeek(seconds) {
+      pendingSeekSeconds = seconds;
       refreshState();
-      mediaSession.refreshPosition();
+    }
+    function clearSeekReleaseTimer() {
+      if (seekReleaseTimer !== void 0) {
+        window.clearTimeout(seekReleaseTimer);
+        seekReleaseTimer = void 0;
+      }
+    }
+    function resumePlaybackAfterSeek() {
+      window.setTimeout(() => {
+        var _a, _b;
+        const state = (_a = window.ZydkaPlayer) == null ? void 0 : _a.state();
+        if (!(state == null ? void 0 : state.currentTrack) || state.isPlaying || state.status === "ended" || state.status === "error") {
+          return;
+        }
+        (_b = window.ZydkaPlayer) == null ? void 0 : _b.resume();
+        refreshState();
+        mediaSession == null ? void 0 : mediaSession.refreshPosition();
+      }, 0);
+    }
+    function commitSeek(seconds) {
+      var _a, _b, _c;
+      const clampedSeconds = clampSeekSeconds(seconds);
+      if (clampedSeconds === null) return;
+      const wasPlayingBeforeSeek = shouldResumeAfterSeek || ((_b = (_a = window.ZydkaPlayer) == null ? void 0 : _a.state().isPlaying) != null ? _b : false);
+      clearSeekReleaseTimer();
+      isUserSeeking = false;
+      progress.classList.remove("zydka-player-progress--dragging");
+      pendingSeekSeconds = clampedSeconds;
+      (_c = window.ZydkaPlayer) == null ? void 0 : _c.seek(clampedSeconds);
+      refreshState();
+      mediaSession == null ? void 0 : mediaSession.refreshPosition();
+      if (wasPlayingBeforeSeek) {
+        resumePlaybackAfterSeek();
+      }
+      seekReleaseTimer = window.setTimeout(() => {
+        seekReleaseTimer = void 0;
+        if (isUserSeeking) return;
+        pendingSeekSeconds = null;
+        refreshState();
+        mediaSession == null ? void 0 : mediaSession.refreshPosition();
+      }, 200);
+    }
+    function seekToTime(seconds) {
+      var _a, _b;
+      shouldResumeAfterSeek = (_b = (_a = window.ZydkaPlayer) == null ? void 0 : _a.state().isPlaying) != null ? _b : false;
+      commitSeek(seconds);
+      shouldResumeAfterSeek = false;
+    }
+    function getProgressSeekSeconds() {
+      return clampSeekSeconds(Number(progress.value));
+    }
+    function beginUserSeek() {
+      var _a, _b;
+      if (getSeekDuration() <= 0) return;
+      if (!isUserSeeking) {
+        clearSeekReleaseTimer();
+        isUserSeeking = true;
+        shouldResumeAfterSeek = (_b = (_a = window.ZydkaPlayer) == null ? void 0 : _a.state().isPlaying) != null ? _b : false;
+        progress.classList.add("zydka-player-progress--dragging");
+      }
+    }
+    function previewProgressSeek() {
+      const seconds = getProgressSeekSeconds();
+      if (seconds === null) return;
+      beginUserSeek();
+      setPendingSeek(seconds);
+    }
+    function finishProgressSeek() {
+      if (!isUserSeeking) return;
+      const seconds = pendingSeekSeconds != null ? pendingSeekSeconds : getProgressSeekSeconds();
+      if (seconds !== null) {
+        commitSeek(seconds);
+      }
+      shouldResumeAfterSeek = false;
+    }
+    function finishProgressSeekSoon() {
+      window.setTimeout(finishProgressSeek, 0);
+    }
+    function cancelPendingSeek() {
+      clearSeekReleaseTimer();
+      isUserSeeking = false;
+      shouldResumeAfterSeek = false;
+      progress.classList.remove("zydka-player-progress--dragging");
+      setPendingSeek(null);
+      mediaSession == null ? void 0 : mediaSession.refreshPosition();
+    }
+    progress.addEventListener("pointerdown", beginUserSeek);
+    progress.addEventListener("touchstart", beginUserSeek, { passive: true });
+    progress.addEventListener("mousedown", beginUserSeek);
+    progress.addEventListener("input", previewProgressSeek);
+    progress.addEventListener("change", finishProgressSeek);
+    progress.addEventListener("pointerup", finishProgressSeekSoon);
+    progress.addEventListener("touchend", finishProgressSeekSoon);
+    progress.addEventListener("mouseup", finishProgressSeekSoon);
+    progress.addEventListener("pointercancel", cancelPendingSeek);
+    progress.addEventListener("touchcancel", cancelPendingSeek);
+    progress.addEventListener("keydown", (event) => {
+      var _a, _b;
+      const trackDuration = getSeekDuration();
+      if (trackDuration <= 0) return;
+      const currentPosition = (_b = (_a = window.ZydkaPlayer) == null ? void 0 : _a.getCurrentTime()) != null ? _b : 0;
+      const keyboardStep = event.shiftKey ? 15 : 5;
+      if (event.key === "ArrowLeft" || event.key === "ArrowDown") {
+        event.preventDefault();
+        seekToTime(currentPosition - keyboardStep);
+      } else if (event.key === "ArrowRight" || event.key === "ArrowUp") {
+        event.preventDefault();
+        seekToTime(currentPosition + keyboardStep);
+      } else if (event.key === "Home") {
+        event.preventDefault();
+        seekToTime(0);
+      } else if (event.key === "End") {
+        event.preventDefault();
+        seekToTime(trackDuration);
+      }
     });
     favoriteKeys = readFavoriteKeys();
     refreshState();
     window.setInterval(refreshState, 250);
+    window.addEventListener("pagehide", () => emitTrackedStop("pagehide"));
   }
   function bootstrap() {
     var _a;
     const root = document.getElementById("zydka-player-root");
     if (!root) return;
     const shortcodeTrack = readTrackFromRoot(root);
+    const managerQueue = readManagerQueueFromRoot(root);
+    if (root.dataset.source === "manager-playlist" && !managerQueue) {
+      return;
+    }
     window.ZydkaPlayer = {
       play: (track) => {
         const normalizedTrack = normalizeTrack(track);
@@ -4071,7 +4595,7 @@
         return { currentTrack, currentIndex, queue, status, isPlaying, position, duration, volume, muted, error };
       }
     };
-    const shortcodeQueue = readQueueFromRoot(root, shortcodeTrack);
+    const shortcodeQueue = managerQueue != null ? managerQueue : readQueueFromRoot(root, shortcodeTrack);
     window.ZydkaPlayer.setQueue(shortcodeQueue);
     renderTestPlayer(root, (_a = shortcodeQueue[0]) != null ? _a : shortcodeTrack);
     console.log("[Zydka Player] Bridge initialized - window.ZydkaPlayer ready.");

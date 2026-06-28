@@ -2,6 +2,9 @@ interface MediaSessionTrack {
   title?: string;
   artist?: string;
   album?: string;
+  cover?: string;
+  cover512?: string;
+  cover1024?: string;
 }
 
 interface MediaImageLike {
@@ -25,14 +28,29 @@ interface MediaSessionLike {
   metadata: unknown;
   playbackState?: 'none' | 'paused' | 'playing';
   setActionHandler?: (
-    action: 'play' | 'pause' | 'previoustrack' | 'nexttrack',
-    handler: (() => void) | null,
+    action: MediaSessionAction,
+    handler: ((details?: MediaSessionActionDetails) => void) | null,
   ) => void;
   setPositionState?: (state: {
     duration: number;
     playbackRate: number;
     position: number;
   }) => void;
+}
+
+type MediaSessionAction =
+  | 'play'
+  | 'pause'
+  | 'previoustrack'
+  | 'nexttrack'
+  | 'seekbackward'
+  | 'seekforward'
+  | 'seekto';
+
+interface MediaSessionActionDetails {
+  seekOffset?: number;
+  seekTime?: number;
+  fastSeek?: boolean;
 }
 
 interface MediaSessionOptions {
@@ -42,6 +60,7 @@ interface MediaSessionOptions {
   pause: () => void;
   previous: () => void;
   next: () => void;
+  seek: (seconds: number) => void;
   getCurrentTime: () => number;
   getDuration: () => number;
   isPlaying: () => boolean;
@@ -101,12 +120,14 @@ function getArtworkType(src: string): string | undefined {
   return undefined;
 }
 
-function createArtwork(src: string | null): MediaImageLike[] | undefined {
-  if (!src?.trim()) return undefined;
+function createArtworkItem(src: string | undefined, sizes: string): MediaImageLike | null {
+  const normalizedSrc = src?.trim();
+
+  if (!normalizedSrc) return null;
 
   const artwork: MediaImageLike = {
-    src: src.trim(),
-    sizes: '512x512',
+    src: normalizedSrc,
+    sizes,
   };
   const type = getArtworkType(artwork.src);
 
@@ -114,7 +135,33 @@ function createArtwork(src: string | null): MediaImageLike[] | undefined {
     artwork.type = type;
   }
 
-  return [artwork];
+  return artwork;
+}
+
+function createArtwork(track: MediaSessionTrack, fallbackSrc: string | null): MediaImageLike[] | undefined {
+  const artworkItems = [
+    createArtworkItem(track.cover512, '512x512'),
+    createArtworkItem(track.cover1024, '1024x1024'),
+    !track.cover512?.trim() && !track.cover1024?.trim()
+      ? createArtworkItem(track.cover, '512x512')
+      : null,
+    !track.cover?.trim() && !track.cover512?.trim() && !track.cover1024?.trim()
+      ? createArtworkItem(fallbackSrc ?? undefined, '512x512')
+      : null,
+  ];
+
+  const seenSources = new Set<string>();
+  const artwork = artworkItems.reduce<MediaImageLike[]>((items, item) => {
+    if (!item || seenSources.has(item.src)) {
+      return items;
+    }
+
+    seenSources.add(item.src);
+    items.push(item);
+    return items;
+  }, []);
+
+  return artwork.length > 0 ? artwork : undefined;
 }
 
 function getValidPositionState(options: MediaSessionOptions): {
@@ -123,8 +170,9 @@ function getValidPositionState(options: MediaSessionOptions): {
   position: number;
 } | null {
   const duration = options.getDuration();
+  const playbackRate = 1;
 
-  if (!Number.isFinite(duration) || duration <= 0) {
+  if (!Number.isFinite(duration) || duration <= 0 || !Number.isFinite(playbackRate) || playbackRate <= 0) {
     return null;
   }
 
@@ -133,9 +181,13 @@ function getValidPositionState(options: MediaSessionOptions): {
     ? Math.min(duration, Math.max(0, currentTime))
     : 0;
 
+  if (!Number.isFinite(position)) {
+    return null;
+  }
+
   return {
     duration,
-    playbackRate: 1,
+    playbackRate,
     position,
   };
 }
@@ -144,6 +196,10 @@ function setPlaybackState(mediaSession: MediaSessionLike, isPlaying: boolean): v
   safeRun(() => {
     mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
   });
+}
+
+function canPublishPositionState(): boolean {
+  return typeof document === 'undefined' || document.visibilityState === 'visible';
 }
 
 export function setupMediaSession(options: MediaSessionOptions): MediaSessionController {
@@ -158,7 +214,12 @@ export function setupMediaSession(options: MediaSessionOptions): MediaSessionCon
   let lastPositionUpdate = 0;
 
   const refreshPosition = (): void => {
+    lastPositionUpdate = Date.now();
     setPlaybackState(mediaSession, options.isPlaying());
+
+    if (!canPublishPositionState()) {
+      return;
+    }
 
     const positionState = getValidPositionState(options);
 
@@ -175,7 +236,7 @@ export function setupMediaSession(options: MediaSessionOptions): MediaSessionCon
     const track = options.getCurrentTrack();
     if (!track) return;
 
-    const artwork = createArtwork(options.getArtwork(track));
+    const artwork = createArtwork(track, options.getArtwork(track));
     const metadata: MediaMetadataInitLike = {
       title: cleanText(track.title, 'Zydka Player'),
       artist: cleanText(track.artist, 'Louis94'),
@@ -210,24 +271,34 @@ export function setupMediaSession(options: MediaSessionOptions): MediaSessionCon
   };
 
   const setHandler = (
-    action: 'play' | 'pause' | 'previoustrack' | 'nexttrack',
-    handler: () => void,
+    action: MediaSessionAction,
+    handler: (details: MediaSessionActionDetails) => void,
+    handlerOptions: { refreshPositionAfterAction?: boolean } = {},
   ): void => {
+    const shouldRefreshPosition = handlerOptions.refreshPositionAfterAction ?? true;
+
     safeRun(() => {
-      mediaSession.setActionHandler?.(action, () => {
-        safeRun(handler);
+      mediaSession.setActionHandler?.(action, (details) => {
+        safeRun(() => handler(details ?? {}));
         window.setTimeout(() => {
           refreshMetadata();
-          refreshPosition();
+          if (shouldRefreshPosition) {
+            refreshPosition();
+          } else {
+            setPlaybackState(mediaSession, options.isPlaying());
+          }
         }, 0);
       });
     });
   };
 
-  setHandler('play', options.play);
-  setHandler('pause', options.pause);
-  setHandler('previoustrack', options.previous);
-  setHandler('nexttrack', options.next);
+  setHandler('play', () => options.play());
+  setHandler('pause', () => options.pause());
+  setHandler('previoustrack', () => options.previous());
+  setHandler('nexttrack', () => options.next());
+  setHandler('seekbackward', () => undefined, { refreshPositionAfterAction: false });
+  setHandler('seekforward', () => undefined, { refreshPositionAfterAction: false });
+  setHandler('seekto', () => undefined, { refreshPositionAfterAction: false });
 
   return {
     refreshMetadata,

@@ -3,7 +3,7 @@
  * Plugin Name: Zydka Player
  * Plugin URI:  https://atelierzydka.com
  * Description: Lecteur audio propriétaire Atelier Zydka pour WordPress.
- * Version:     0.1.0
+ * Version:     0.6.3
  * Author:      Atelier Zydka
  * Author URI:  https://atelierzydka.com
  * Text Domain: zydka-player
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'ZYDKA_PLAYER_VERSION', '0.1.0' );
+define( 'ZYDKA_PLAYER_VERSION', '0.6.3' );
 define( 'ZYDKA_PLAYER_PATH', plugin_dir_path( __FILE__ ) );
 define( 'ZYDKA_PLAYER_URL', plugin_dir_url( __FILE__ ) );
 
@@ -45,14 +45,19 @@ add_action( 'wp_enqueue_scripts', 'zydka_player_enqueue_assets' );
  */
 function zydka_player_render_container( array $attrs = [], array $tracks = [] ): string {
     $data_attributes = sprintf(
-        'data-source="%s" data-track-id="%s" data-title="%s" data-artist="%s" data-album="%s" data-src="%s" data-cover="%s" data-buy-url="%s" data-buy-label="%s" data-download-url="%s"',
+        'data-source="%s" data-track-id="%s" data-title="%s" data-artist="%s" data-album="%s" data-bpm="%s" data-mood="%s" data-style="%s" data-src="%s" data-cover="%s" data-cover-512="%s" data-cover-1024="%s" data-buy-url="%s" data-buy-label="%s" data-download-url="%s"',
         esc_attr( $attrs['source'] ?? 'shortcode' ),
         esc_attr( $attrs['id'] ?? 'demo-track' ),
         esc_attr( $attrs['title'] ?? 'Demo Track' ),
         esc_attr( $attrs['artist'] ?? 'Atelier Zydka' ),
         esc_attr( $attrs['album'] ?? '' ),
+        esc_attr( $attrs['bpm'] ?? '' ),
+        esc_attr( $attrs['mood'] ?? '' ),
+        esc_attr( $attrs['style'] ?? '' ),
         esc_url( $attrs['src'] ?? '' ),
         esc_url( $attrs['cover'] ?? '' ),
+        esc_url( $attrs['cover512'] ?? '' ),
+        esc_url( $attrs['cover1024'] ?? '' ),
         esc_url( $attrs['buy_url'] ?? '' ),
         esc_attr( $attrs['buy_label'] ?? '' ),
         esc_url( $attrs['download_url'] ?? '' )
@@ -84,6 +89,11 @@ function zydka_player_shortcode( $atts = [] ): string {
             'src'    => '',
             'album'  => '',
             'cover'  => '',
+            'cover512' => '',
+            'cover1024' => '',
+            'bpm'    => '',
+            'mood'   => '',
+            'style'  => '',
             'buy_url' => '',
             'buy_label' => '',
             'download_url' => '',
@@ -98,6 +108,11 @@ function zydka_player_shortcode( $atts = [] ): string {
     $atts['src']    = esc_url_raw( $atts['src'] );
     $atts['album']  = sanitize_text_field( $atts['album'] );
     $atts['cover']  = esc_url_raw( $atts['cover'] );
+    $atts['cover512'] = esc_url_raw( $atts['cover512'] );
+    $atts['cover1024'] = esc_url_raw( $atts['cover1024'] );
+    $atts['bpm']    = sanitize_text_field( $atts['bpm'] );
+    $atts['mood']   = sanitize_text_field( $atts['mood'] );
+    $atts['style']  = sanitize_text_field( $atts['style'] );
     $atts['buy_url'] = esc_url_raw( $atts['buy_url'] );
     $atts['buy_label'] = sanitize_text_field( $atts['buy_label'] );
     $atts['download_url'] = esc_url_raw( $atts['download_url'] );
@@ -129,6 +144,11 @@ function zydka_playlist_shortcode( $atts = [], $content = null ): string {
         'src'    => '',
         'album'  => '',
         'cover'  => '',
+        'cover512' => '',
+        'cover1024' => '',
+        'bpm'    => '',
+        'mood'   => '',
+        'style'  => '',
         'buy_url' => '',
         'buy_label' => '',
         'download_url' => '',
@@ -158,6 +178,11 @@ function zydka_track_shortcode( $atts = [] ): string {
             'src'    => '',
             'album'  => '',
             'cover'  => '',
+            'cover512' => '',
+            'cover1024' => '',
+            'bpm'    => '',
+            'mood'   => '',
+            'style'  => '',
             'buy_url' => '',
             'buy_label' => '',
             'download_url' => '',
@@ -179,6 +204,11 @@ function zydka_track_shortcode( $atts = [] ): string {
         'src'    => $src,
         'album'  => sanitize_text_field( $atts['album'] ),
         'cover'  => esc_url_raw( $atts['cover'] ),
+        'cover512' => esc_url_raw( $atts['cover512'] ),
+        'cover1024' => esc_url_raw( $atts['cover1024'] ),
+        'bpm'    => sanitize_text_field( $atts['bpm'] ),
+        'mood'   => sanitize_text_field( $atts['mood'] ),
+        'style'  => sanitize_text_field( $atts['style'] ),
         'buy_url' => esc_url_raw( $atts['buy_url'] ),
         'buy_label' => sanitize_text_field( $atts['buy_label'] ),
         'download_url' => esc_url_raw( $atts['download_url'] ),

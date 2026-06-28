@@ -3251,6 +3251,15 @@
       <path d="m16 9 4 6" />
       <path d="m20 9-4 6" />
     </svg>
+  `,
+    share: `
+    <svg class="zydka-player-control-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M8.75 12.7 15.25 16" />
+      <path d="M15.25 8 8.75 11.3" />
+      <path d="M6.5 14.25a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Z" />
+      <path d="M17.5 9.75a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Z" />
+      <path d="M17.5 18.75a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Z" />
+    </svg>
   `
   };
   function setIconButton(button, label, icon) {
@@ -3375,6 +3384,17 @@
     volumeValue.className = "zydka-player-volume-value";
     volumeValue.textContent = "100%";
     volumeControl.append(muteButton, volumeSlider, volumeValue);
+    const shareControl = document.createElement("div");
+    shareControl.className = "zydka-player-share";
+    const shareButton = document.createElement("button");
+    shareButton.className = "zydka-player-button zydka-player-icon-button zydka-player-mode-button zydka-player-share-button";
+    shareButton.type = "button";
+    setIconButton(shareButton, "Partager le morceau", "share");
+    const shareFeedback = document.createElement("span");
+    shareFeedback.className = "zydka-player-share-feedback";
+    shareFeedback.setAttribute("aria-live", "polite");
+    shareFeedback.hidden = true;
+    shareControl.append(shareButton, shareFeedback);
     const queueOverlay = document.createElement("div");
     queueOverlay.className = "zydka-player-queue-overlay";
     queueOverlay.hidden = true;
@@ -3412,7 +3432,7 @@
     error.className = "zydka-player-error";
     error.hidden = true;
     footer.append(status, error);
-    card.append(header, actions, timeline, volumeControl, footer);
+    card.append(header, actions, timeline, volumeControl, shareControl, footer);
     root.append(card, queueOverlay);
     const failedCoverUrls = /* @__PURE__ */ new Set();
     const embeddedCoverUrls = /* @__PURE__ */ new Map();
@@ -3425,6 +3445,7 @@
     let shuffleEnabled = false;
     let shuffleHistory = [];
     let handledEndedSignature = "";
+    let shareFeedbackTimer;
     const getDisplayCoverUrl = (track) => {
       var _a, _b;
       if (!track) return null;
@@ -3508,6 +3529,59 @@
     };
     const cycleRepeatMode = () => {
       repeatMode = repeatMode === "off" ? "queue" : repeatMode === "queue" ? "one" : "off";
+    };
+    const getShareUrl = (track) => {
+      const url = new URL(window.location.href);
+      if ((track == null ? void 0 : track.id) !== void 0 && track.id !== null && String(track.id).trim()) {
+        url.hash = `track-${encodeURIComponent(String(track.id).trim())}`;
+      }
+      return url.toString();
+    };
+    const showShareFeedback = (message) => {
+      shareFeedback.textContent = message;
+      shareFeedback.hidden = false;
+      if (shareFeedbackTimer) {
+        window.clearTimeout(shareFeedbackTimer);
+      }
+      shareFeedbackTimer = window.setTimeout(() => {
+        shareFeedback.hidden = true;
+        shareFeedback.textContent = "";
+        shareFeedbackTimer = void 0;
+      }, 2200);
+    };
+    const shareCurrentTrack = async () => {
+      var _a, _b, _c, _d, _e, _f, _g, _h, _i;
+      const state = (_a = window.ZydkaPlayer) == null ? void 0 : _a.state();
+      const queue = (_d = (_c = (_b = window.ZydkaPlayer) == null ? void 0 : _b.getQueue()) != null ? _c : state == null ? void 0 : state.queue) != null ? _d : [];
+      const currentIndex = (_g = (_f = (_e = window.ZydkaPlayer) == null ? void 0 : _e.getCurrentIndex()) != null ? _f : state == null ? void 0 : state.currentIndex) != null ? _g : -1;
+      const track = (_i = (_h = state == null ? void 0 : state.currentTrack) != null ? _h : queue[currentIndex]) != null ? _i : normalizeTrack(fallbackDisplayTrack);
+      const title2 = renderText((track == null ? void 0 : track.title) || "Zydka Player");
+      const artist2 = renderText((track == null ? void 0 : track.artist) || "").trim();
+      const text = artist2 ? `${artist2} - ${title2}` : "\xC9couter sur Louis94";
+      const url = getShareUrl(track);
+      const shareData = { title: title2, text, url };
+      try {
+        if (typeof navigator.share === "function") {
+          await navigator.share(shareData);
+          showShareFeedback("Partag\xE9");
+          return;
+        }
+      } catch (error2) {
+        if (error2 instanceof DOMException && error2.name === "AbortError") {
+          return;
+        }
+      }
+      try {
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+          await navigator.clipboard.writeText(url);
+          showShareFeedback("Lien copi\xE9");
+          return;
+        }
+      } catch (_error) {
+        showShareFeedback("Impossible de copier");
+        return;
+      }
+      showShareFeedback("Impossible de copier");
     };
     const handleEndedPlayback = (state, queue, currentIndex) => {
       var _a, _b;
@@ -3742,6 +3816,7 @@
       repeatButton.dataset.repeatMode = repeatMode;
       repeatButton.setAttribute("aria-pressed", String(repeatMode !== "off"));
       setIconButton(repeatButton, getRepeatLabel(), "repeat");
+      setIconButton(shareButton, `Partager ${renderText((displayTrack == null ? void 0 : displayTrack.title) || "le morceau")}`, "share");
       previousButton.disabled = shuffleEnabled ? shuffleHistory.length === 0 && currentIndex <= 0 : currentIndex <= 0;
       nextButton.disabled = !canGoNext;
       toggleButton.classList.toggle("zydka-player-toggle-button--playing", state.isPlaying);
@@ -3806,6 +3881,9 @@
     repeatButton.addEventListener("click", () => {
       cycleRepeatMode();
       refreshState();
+    });
+    shareButton.addEventListener("click", () => {
+      void shareCurrentTrack();
     });
     queueButton.addEventListener("click", () => {
       setQueueOpen(!isQueueOpen);

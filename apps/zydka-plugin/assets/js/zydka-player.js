@@ -3198,6 +3198,15 @@
     return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
   }
   var controlIcons = {
+    shuffle: `
+    <svg class="zydka-player-control-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M4.75 7.5h2.2c2.05 0 3.25 1.05 4.45 3.2l1.2 2.15c1.2 2.1 2.4 3.15 4.45 3.15h2.2" />
+      <path d="M16.75 13.6 19.25 16l-2.5 2.4" />
+      <path d="M4.75 16h2.2c1.25 0 2.16-.38 2.95-1.22" />
+      <path d="M13.8 8.66c.86-.8 1.82-1.16 3.25-1.16h2.2" />
+      <path d="M16.75 5.1 19.25 7.5l-2.5 2.4" />
+    </svg>
+  `,
     previous: `
     <svg class="zydka-player-control-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
       <path d="M7.25 6.75v10.5" />
@@ -3219,6 +3228,14 @@
     <svg class="zydka-player-control-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
       <path d="M16.75 6.75v10.5" />
       <path d="M6.5 7.25 14.75 12 6.5 16.75V7.25Z" />
+    </svg>
+  `,
+    repeat: `
+    <svg class="zydka-player-control-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M17.75 7.25H8.25a3.5 3.5 0 0 0-3.5 3.5v.75" />
+      <path d="M15.75 5.25 17.75 7.25l-2 2" />
+      <path d="M6.25 16.75h9.5a3.5 3.5 0 0 0 3.5-3.5v-.75" />
+      <path d="M8.25 18.75 6.25 16.75l2-2" />
     </svg>
   `,
     volume: `
@@ -3291,6 +3308,11 @@
     header.append(textBlock, headerAside);
     const actions = document.createElement("div");
     actions.className = "zydka-player-actions";
+    const shuffleButton = document.createElement("button");
+    shuffleButton.className = "zydka-player-button zydka-player-icon-button zydka-player-mode-button zydka-player-shuffle-button";
+    shuffleButton.type = "button";
+    shuffleButton.setAttribute("aria-pressed", "false");
+    setIconButton(shuffleButton, "Activer la lecture al\xE9atoire", "shuffle");
     const previousButton = document.createElement("button");
     previousButton.className = "zydka-player-button zydka-player-icon-button zydka-player-nav-button";
     previousButton.type = "button";
@@ -3303,13 +3325,18 @@
     nextButton.className = "zydka-player-button zydka-player-icon-button zydka-player-nav-button";
     nextButton.type = "button";
     setIconButton(nextButton, "Next", "next");
+    const repeatButton = document.createElement("button");
+    repeatButton.className = "zydka-player-button zydka-player-icon-button zydka-player-mode-button zydka-player-repeat-button";
+    repeatButton.type = "button";
+    repeatButton.setAttribute("aria-pressed", "false");
+    setIconButton(repeatButton, "Activer la r\xE9p\xE9tition", "repeat");
     const queueButton = document.createElement("button");
     queueButton.className = "zydka-player-button zydka-player-queue-button";
     queueButton.type = "button";
     queueButton.textContent = "A suivre";
     queueButton.setAttribute("aria-expanded", "false");
     queueButton.hidden = true;
-    actions.append(previousButton, toggleButton, nextButton, queueButton);
+    actions.append(shuffleButton, previousButton, toggleButton, nextButton, repeatButton, queueButton);
     const timeline = document.createElement("div");
     timeline.className = "zydka-player-timeline";
     const currentTime = document.createElement("span");
@@ -3394,6 +3421,10 @@
     let renderedQueueSignature = "";
     let hasMultipleQueuedTracks = false;
     let isQueueOpen = false;
+    let repeatMode = "off";
+    let shuffleEnabled = false;
+    let shuffleHistory = [];
+    let handledEndedSignature = "";
     const getDisplayCoverUrl = (track) => {
       var _a, _b;
       if (!track) return null;
@@ -3421,6 +3452,92 @@
       const currentIndex = (_d = (_c = window.ZydkaPlayer) == null ? void 0 : _c.getCurrentIndex()) != null ? _d : 0;
       (_e = window.ZydkaPlayer) == null ? void 0 : _e.playAt(Math.max(0, currentIndex));
     };
+    const getRandomQueueIndex = (queueLength, currentIndex) => {
+      if (queueLength <= 0) return -1;
+      if (queueLength === 1) return 0;
+      let nextIndex = Math.floor(Math.random() * queueLength);
+      if (nextIndex === currentIndex) {
+        nextIndex = (nextIndex + 1 + Math.floor(Math.random() * (queueLength - 1))) % queueLength;
+      }
+      return nextIndex;
+    };
+    const playAtIndex = (index, options = {}) => {
+      var _a, _b;
+      const didPlay = (_b = (_a = window.ZydkaPlayer) == null ? void 0 : _a.playAt(index)) != null ? _b : false;
+      if (didPlay && options.resetShuffleHistory !== false) {
+        shuffleHistory = [];
+      }
+      return didPlay;
+    };
+    const playNextTrack = () => {
+      var _a, _b, _c, _d, _e, _f, _g, _h, _i;
+      const state = (_a = window.ZydkaPlayer) == null ? void 0 : _a.state();
+      const queue = (_d = (_c = (_b = window.ZydkaPlayer) == null ? void 0 : _b.getQueue()) != null ? _c : state == null ? void 0 : state.queue) != null ? _d : [];
+      const currentIndex = (_g = (_f = (_e = window.ZydkaPlayer) == null ? void 0 : _e.getCurrentIndex()) != null ? _f : state == null ? void 0 : state.currentIndex) != null ? _g : -1;
+      if (queue.length === 0) return false;
+      if (shuffleEnabled) {
+        const nextIndex = getRandomQueueIndex(queue.length, currentIndex);
+        if (nextIndex < 0) return false;
+        if (currentIndex >= 0 && queue.length > 1) {
+          shuffleHistory.push(currentIndex);
+        }
+        return playAtIndex(nextIndex, { resetShuffleHistory: false });
+      }
+      if (currentIndex < queue.length - 1) {
+        return (_i = (_h = window.ZydkaPlayer) == null ? void 0 : _h.next()) != null ? _i : false;
+      }
+      if (repeatMode === "queue") {
+        return playAtIndex(0);
+      }
+      return false;
+    };
+    const playPreviousTrack = () => {
+      var _a, _b;
+      if (shuffleEnabled && shuffleHistory.length > 0) {
+        const previousIndex = shuffleHistory.pop();
+        if (typeof previousIndex === "number") {
+          return playAtIndex(previousIndex, { resetShuffleHistory: false });
+        }
+      }
+      return (_b = (_a = window.ZydkaPlayer) == null ? void 0 : _a.previous()) != null ? _b : false;
+    };
+    const getRepeatLabel = () => {
+      if (repeatMode === "queue") return "R\xE9p\xE9ter la file";
+      if (repeatMode === "one") return "R\xE9p\xE9ter le morceau";
+      return "Activer la r\xE9p\xE9tition";
+    };
+    const cycleRepeatMode = () => {
+      repeatMode = repeatMode === "off" ? "queue" : repeatMode === "queue" ? "one" : "off";
+    };
+    const handleEndedPlayback = (state, queue, currentIndex) => {
+      var _a, _b;
+      if (state.status !== "ended" || repeatMode === "off") {
+        if (state.status !== "ended") {
+          handledEndedSignature = "";
+        }
+        return;
+      }
+      const endedSignature = `${currentIndex}:${(_b = (_a = state.currentTrack) == null ? void 0 : _a.id) != null ? _b : ""}:${Math.round(state.duration)}`;
+      if (endedSignature === handledEndedSignature) return;
+      handledEndedSignature = endedSignature;
+      if (repeatMode === "one") {
+        playAtIndex(Math.max(0, currentIndex), { resetShuffleHistory: false });
+        return;
+      }
+      if (queue.length === 0) return;
+      if (shuffleEnabled) {
+        const nextIndex = getRandomQueueIndex(queue.length, currentIndex);
+        if (nextIndex >= 0) {
+          playAtIndex(nextIndex, { resetShuffleHistory: false });
+        }
+        return;
+      }
+      if (currentIndex < queue.length - 1) {
+        playAtIndex(Math.max(0, currentIndex + 1), { resetShuffleHistory: false });
+      } else {
+        playAtIndex(0, { resetShuffleHistory: false });
+      }
+    };
     const mediaSession = setupMediaSession({
       getCurrentTrack: () => {
         var _a, _b;
@@ -3433,12 +3550,10 @@
         return (_a = window.ZydkaPlayer) == null ? void 0 : _a.pause();
       },
       previous: () => {
-        var _a;
-        (_a = window.ZydkaPlayer) == null ? void 0 : _a.previous();
+        playPreviousTrack();
       },
       next: () => {
-        var _a;
-        (_a = window.ZydkaPlayer) == null ? void 0 : _a.next();
+        playNextTrack();
       },
       getCurrentTime: () => {
         var _a, _b;
@@ -3579,6 +3694,7 @@
       const volume = (_m = (_l = window.ZydkaPlayer) == null ? void 0 : _l.getVolume()) != null ? _m : state.volume;
       const muted = (_o = (_n = window.ZydkaPlayer) == null ? void 0 : _n.isMuted()) != null ? _o : state.muted;
       const hasQueue = queue.length > 1;
+      const canGoNext = queue.length > 0 && (shuffleEnabled || currentIndex < queue.length - 1 || repeatMode === "queue");
       if (hasQueue !== hasMultipleQueuedTracks) {
         hasMultipleQueuedTracks = hasQueue;
         queueButton.hidden = !hasQueue;
@@ -3614,8 +3730,20 @@
         coverFallback.hidden = false;
       }
       trackCounter.textContent = `Track ${displayIndex} / ${queue.length}`;
-      previousButton.disabled = currentIndex <= 0;
-      nextButton.disabled = currentIndex >= queue.length - 1;
+      shuffleButton.classList.toggle("zydka-player-mode-button--active", shuffleEnabled);
+      shuffleButton.setAttribute("aria-pressed", String(shuffleEnabled));
+      setIconButton(
+        shuffleButton,
+        shuffleEnabled ? "D\xE9sactiver la lecture al\xE9atoire" : "Activer la lecture al\xE9atoire",
+        "shuffle"
+      );
+      repeatButton.classList.toggle("zydka-player-mode-button--active", repeatMode !== "off");
+      repeatButton.classList.toggle("zydka-player-repeat-button--one", repeatMode === "one");
+      repeatButton.dataset.repeatMode = repeatMode;
+      repeatButton.setAttribute("aria-pressed", String(repeatMode !== "off"));
+      setIconButton(repeatButton, getRepeatLabel(), "repeat");
+      previousButton.disabled = shuffleEnabled ? shuffleHistory.length === 0 && currentIndex <= 0 : currentIndex <= 0;
+      nextButton.disabled = !canGoNext;
       toggleButton.classList.toggle("zydka-player-toggle-button--playing", state.isPlaying);
       setIconButton(toggleButton, state.isPlaying ? "Pause" : "Play", state.isPlaying ? "pause" : "play");
       statusValue.textContent = state.status;
@@ -3641,6 +3769,7 @@
       } else {
         mediaSession.refreshPosition();
       }
+      handleEndedPlayback(state, queue, currentIndex);
     };
     coverImage.addEventListener("error", () => {
       const failedCover = coverImage.dataset.coverSrc;
@@ -3652,8 +3781,7 @@
       coverFallback.hidden = false;
     });
     previousButton.addEventListener("click", () => {
-      var _a;
-      (_a = window.ZydkaPlayer) == null ? void 0 : _a.previous();
+      playPreviousTrack();
       refreshState();
     });
     toggleButton.addEventListener("click", () => {
@@ -3667,8 +3795,16 @@
       refreshState();
     });
     nextButton.addEventListener("click", () => {
-      var _a;
-      (_a = window.ZydkaPlayer) == null ? void 0 : _a.next();
+      playNextTrack();
+      refreshState();
+    });
+    shuffleButton.addEventListener("click", () => {
+      shuffleEnabled = !shuffleEnabled;
+      shuffleHistory = [];
+      refreshState();
+    });
+    repeatButton.addEventListener("click", () => {
+      cycleRepeatMode();
       refreshState();
     });
     queueButton.addEventListener("click", () => {

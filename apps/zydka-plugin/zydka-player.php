@@ -3,7 +3,7 @@
  * Plugin Name: Zydka Player
  * Plugin URI:  https://atelierzydka.com
  * Description: Lecteur audio propriétaire Atelier Zydka pour WordPress.
- * Version:     0.1.0
+ * Version:     0.2.0
  * Author:      Atelier Zydka
  * Author URI:  https://atelierzydka.com
  * Text Domain: zydka-player
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'ZYDKA_PLAYER_VERSION', '0.1.0' );
+define( 'ZYDKA_PLAYER_VERSION', '0.2.0' );
 define( 'ZYDKA_PLAYER_PATH', plugin_dir_path( __FILE__ ) );
 define( 'ZYDKA_PLAYER_URL', plugin_dir_url( __FILE__ ) );
 

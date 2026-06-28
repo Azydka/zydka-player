@@ -3258,7 +3258,13 @@
     nextButton.className = "zydka-player-button zydka-player-nav-button";
     nextButton.type = "button";
     nextButton.textContent = "Next";
-    actions.append(previousButton, toggleButton, nextButton);
+    const queueButton = document.createElement("button");
+    queueButton.className = "zydka-player-button zydka-player-queue-button";
+    queueButton.type = "button";
+    queueButton.textContent = "Queue";
+    queueButton.setAttribute("aria-expanded", "false");
+    queueButton.hidden = true;
+    actions.append(previousButton, toggleButton, nextButton, queueButton);
     const timeline = document.createElement("div");
     timeline.className = "zydka-player-timeline";
     const currentTime = document.createElement("span");
@@ -3301,17 +3307,31 @@
     volumeValue.className = "zydka-player-volume-value";
     volumeValue.textContent = "100%";
     volumeControl.append(muteButton, volumeLabel, volumeSlider, volumeValue);
+    const queueOverlay = document.createElement("div");
+    queueOverlay.className = "zydka-player-queue-overlay";
+    queueOverlay.hidden = true;
+    queueOverlay.setAttribute("aria-hidden", "true");
     const queuePanel = document.createElement("section");
     queuePanel.className = "zydka-player-queue";
-    queuePanel.hidden = true;
+    queuePanel.setAttribute("role", "dialog");
+    queuePanel.setAttribute("aria-modal", "false");
     queuePanel.setAttribute("aria-labelledby", "zydka-player-queue-title");
+    const queueHeader = document.createElement("div");
+    queueHeader.className = "zydka-player-queue__header";
     const queuePanelTitle = document.createElement("h3");
     queuePanelTitle.className = "zydka-player-queue__title";
     queuePanelTitle.id = "zydka-player-queue-title";
-    queuePanelTitle.textContent = "\xC0 suivre";
+    queuePanelTitle.textContent = "Queue";
+    const closeQueueButton = document.createElement("button");
+    closeQueueButton.className = "zydka-player-queue__close";
+    closeQueueButton.type = "button";
+    closeQueueButton.textContent = "Close";
+    closeQueueButton.setAttribute("aria-label", "Close queue");
+    queueHeader.append(queuePanelTitle, closeQueueButton);
     const queueList = document.createElement("ol");
     queueList.className = "zydka-player-queue__list";
-    queuePanel.append(queuePanelTitle, queueList);
+    queuePanel.append(queueHeader, queueList);
+    queueOverlay.append(queuePanel);
     const footer = document.createElement("div");
     footer.className = "zydka-player-footer";
     const error = document.createElement("p");
@@ -3319,12 +3339,14 @@
     error.hidden = true;
     footer.append(status, error);
     card.append(header, actions, timeline, volumeControl, footer);
-    root.append(card, queuePanel);
+    root.append(card, queueOverlay);
     const failedCoverUrls = /* @__PURE__ */ new Set();
     const embeddedCoverUrls = /* @__PURE__ */ new Map();
     const requestedEmbeddedCoverUrls = /* @__PURE__ */ new Set();
     let refreshState = () => void 0;
     let renderedQueueSignature = "";
+    let hasMultipleQueuedTracks = false;
+    let isQueueOpen = false;
     const getDisplayCoverUrl = (track) => {
       var _a, _b;
       if (!track) return null;
@@ -3384,13 +3406,27 @@
         return (_b = (_a = window.ZydkaPlayer) == null ? void 0 : _a.state().isPlaying) != null ? _b : false;
       }
     });
+    const isMobileQueueView = () => window.matchMedia("(max-width: 640px)").matches;
+    const setQueueOpen = (shouldOpen) => {
+      const nextOpen = shouldOpen && hasMultipleQueuedTracks;
+      isQueueOpen = nextOpen;
+      queueOverlay.hidden = !nextOpen;
+      queueOverlay.classList.toggle("zydka-player-queue-overlay--open", nextOpen);
+      queuePanel.classList.toggle("zydka-player-queue--open", nextOpen);
+      queueOverlay.setAttribute("aria-hidden", String(!nextOpen));
+      queueButton.setAttribute("aria-expanded", String(nextOpen));
+      if (nextOpen) {
+        closeQueueButton.focus();
+      } else if (document.activeElement && queueOverlay.contains(document.activeElement)) {
+        queueButton.focus();
+      }
+    };
     const renderQueueItems = (queue, currentIndex) => {
       queueList.innerHTML = "";
       if (queue.length <= 1) {
-        queuePanel.hidden = true;
+        setQueueOpen(false);
         return;
       }
-      queuePanel.hidden = false;
       queue.forEach((track, index) => {
         const listItem = document.createElement("li");
         const item = document.createElement("button");
@@ -3452,6 +3488,9 @@
           var _a;
           (_a = window.ZydkaPlayer) == null ? void 0 : _a.playAt(index);
           refreshState();
+          if (isMobileQueueView()) {
+            setQueueOpen(false);
+          }
         });
         listItem.append(item);
         queueList.append(listItem);
@@ -3480,6 +3519,12 @@
       const displayIndex = queue.length > 0 ? Math.max(0, currentIndex) + 1 : 0;
       const volume = (_m = (_l = window.ZydkaPlayer) == null ? void 0 : _l.getVolume()) != null ? _m : state.volume;
       const muted = (_o = (_n = window.ZydkaPlayer) == null ? void 0 : _n.isMuted()) != null ? _o : state.muted;
+      const hasQueue = queue.length > 1;
+      if (hasQueue !== hasMultipleQueuedTracks) {
+        hasMultipleQueuedTracks = hasQueue;
+        queueButton.hidden = !hasQueue;
+        setQueueOpen(isQueueOpen && hasQueue);
+      }
       card.className = `zydka-player-card zydka-player-state-${state.status}`;
       title.textContent = renderText((_p = displayTrack == null ? void 0 : displayTrack.title) != null ? _p : fallbackDisplayTrack.title);
       artist.textContent = renderText((_q = displayTrack == null ? void 0 : displayTrack.artist) != null ? _q : fallbackDisplayTrack.artist);
@@ -3562,6 +3607,22 @@
       var _a;
       (_a = window.ZydkaPlayer) == null ? void 0 : _a.next();
       refreshState();
+    });
+    queueButton.addEventListener("click", () => {
+      setQueueOpen(!isQueueOpen);
+    });
+    closeQueueButton.addEventListener("click", () => {
+      setQueueOpen(false);
+    });
+    queueOverlay.addEventListener("click", (event) => {
+      if (event.target === queueOverlay) {
+        setQueueOpen(false);
+      }
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && isQueueOpen && !isMobileQueueView()) {
+        setQueueOpen(false);
+      }
     });
     muteButton.addEventListener("click", () => {
       var _a, _b;

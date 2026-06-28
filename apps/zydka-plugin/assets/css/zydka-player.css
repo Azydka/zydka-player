@@ -1,0 +1,9 @@
+/* Zydka Player — styles de base
+ * Ce fichier est un placeholder. Les styles définitifs seront ajoutés
+ * lors de l'intégration du composant lecteur.
+ */
+
+.zydka-player-root {
+  display: block;
+  width: 100%;
+}

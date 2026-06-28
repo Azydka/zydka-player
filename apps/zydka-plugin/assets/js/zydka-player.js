@@ -3197,6 +3197,52 @@
     const remainingSeconds = totalSeconds % 60;
     return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
   }
+  var controlIcons = {
+    previous: `
+    <svg class="zydka-player-control-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M7.25 6.75v10.5" />
+      <path d="M17.5 7.25 9.25 12l8.25 4.75V7.25Z" />
+    </svg>
+  `,
+    play: `
+    <svg class="zydka-player-control-icon zydka-player-control-icon--play" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M9 6.85 17.15 12 9 17.15V6.85Z" />
+    </svg>
+  `,
+    pause: `
+    <svg class="zydka-player-control-icon zydka-player-control-icon--pause" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M8.35 6.75h2.7v10.5h-2.7z" />
+      <path d="M12.95 6.75h2.7v10.5h-2.7z" />
+    </svg>
+  `,
+    next: `
+    <svg class="zydka-player-control-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M16.75 6.75v10.5" />
+      <path d="M6.5 7.25 14.75 12 6.5 16.75V7.25Z" />
+    </svg>
+  `,
+    volume: `
+    <svg class="zydka-player-control-icon zydka-player-control-icon--volume" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M4.75 9.25h3.1l4.4-3.25v12l-4.4-3.25h-3.1v-5.5Z" />
+      <path d="M15.45 8.55a4.85 4.85 0 0 1 0 6.9" />
+      <path d="M17.65 6.35a7.95 7.95 0 0 1 0 11.3" />
+    </svg>
+  `,
+    muted: `
+    <svg class="zydka-player-control-icon zydka-player-control-icon--volume" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M4.75 9.25h3.1l4.4-3.25v12l-4.4-3.25h-3.1v-5.5Z" />
+      <path d="m16 9 4 6" />
+      <path d="m20 9-4 6" />
+    </svg>
+  `
+  };
+  function setIconButton(button, label, icon) {
+    button.setAttribute("aria-label", label);
+    button.setAttribute("title", label);
+    if (button.dataset.icon === icon) return;
+    button.dataset.icon = icon;
+    button.innerHTML = controlIcons[icon];
+  }
   function renderTestPlayer(root, fallbackDisplayTrack) {
     root.innerHTML = "";
     const card = document.createElement("div");
@@ -3246,18 +3292,17 @@
     const actions = document.createElement("div");
     actions.className = "zydka-player-actions";
     const previousButton = document.createElement("button");
-    previousButton.className = "zydka-player-button zydka-player-nav-button";
+    previousButton.className = "zydka-player-button zydka-player-icon-button zydka-player-nav-button";
     previousButton.type = "button";
-    previousButton.textContent = "Previous";
+    setIconButton(previousButton, "Previous", "previous");
     const toggleButton = document.createElement("button");
-    toggleButton.className = "zydka-player-button zydka-player-toggle-button";
+    toggleButton.className = "zydka-player-button zydka-player-icon-button zydka-player-toggle-button";
     toggleButton.type = "button";
-    toggleButton.textContent = "Play";
-    toggleButton.setAttribute("aria-label", "Play");
+    setIconButton(toggleButton, "Play", "play");
     const nextButton = document.createElement("button");
-    nextButton.className = "zydka-player-button zydka-player-nav-button";
+    nextButton.className = "zydka-player-button zydka-player-icon-button zydka-player-nav-button";
     nextButton.type = "button";
-    nextButton.textContent = "Next";
+    setIconButton(nextButton, "Next", "next");
     const queueButton = document.createElement("button");
     queueButton.className = "zydka-player-button zydka-player-queue-button";
     queueButton.type = "button";
@@ -3288,13 +3333,9 @@
     const volumeControl = document.createElement("div");
     volumeControl.className = "zydka-player-volume";
     const muteButton = document.createElement("button");
-    muteButton.className = "zydka-player-button zydka-player-mute-button";
+    muteButton.className = "zydka-player-button zydka-player-icon-button zydka-player-mute-button";
     muteButton.type = "button";
-    muteButton.textContent = "Mute";
-    muteButton.setAttribute("aria-label", "Mute");
-    const volumeLabel = document.createElement("label");
-    volumeLabel.className = "zydka-player-volume-label";
-    volumeLabel.textContent = "Volume";
+    setIconButton(muteButton, "Mute", "volume");
     const volumeSlider = document.createElement("input");
     volumeSlider.className = "zydka-player-volume-slider";
     volumeSlider.type = "range";
@@ -3306,7 +3347,7 @@
     const volumeValue = document.createElement("span");
     volumeValue.className = "zydka-player-volume-value";
     volumeValue.textContent = "100%";
-    volumeControl.append(muteButton, volumeLabel, volumeSlider, volumeValue);
+    volumeControl.append(muteButton, volumeSlider, volumeValue);
     const queueOverlay = document.createElement("div");
     queueOverlay.className = "zydka-player-queue-overlay";
     queueOverlay.hidden = true;
@@ -3544,6 +3585,7 @@
         setQueueOpen(isQueueOpen && hasQueue, { focusClose: false, restoreFocus: false });
       }
       root.classList.toggle("zydka-player-root--has-queue", hasQueue);
+      actions.classList.toggle("zydka-player-actions--has-queue", hasQueue);
       queueButton.textContent = hasQueue ? `A suivre (${queue.length})` : "A suivre";
       card.className = `zydka-player-card zydka-player-state-${state.status}`;
       title.textContent = renderText((_p = displayTrack == null ? void 0 : displayTrack.title) != null ? _p : fallbackDisplayTrack.title);
@@ -3574,8 +3616,8 @@
       trackCounter.textContent = `Track ${displayIndex} / ${queue.length}`;
       previousButton.disabled = currentIndex <= 0;
       nextButton.disabled = currentIndex >= queue.length - 1;
-      toggleButton.textContent = state.isPlaying ? "Pause" : "Play";
-      toggleButton.setAttribute("aria-label", state.isPlaying ? "Pause" : "Play");
+      toggleButton.classList.toggle("zydka-player-toggle-button--playing", state.isPlaying);
+      setIconButton(toggleButton, state.isPlaying ? "Pause" : "Play", state.isPlaying ? "pause" : "play");
       statusValue.textContent = state.status;
       currentTime.textContent = formatTime(position);
       duration.textContent = formatTime(trackDuration);
@@ -3583,8 +3625,9 @@
       progress.setAttribute("aria-valuenow", String(Math.round(progressPercent)));
       volumeSlider.value = String(volume);
       volumeValue.textContent = `${Math.round(volume * 100)}%`;
-      muteButton.textContent = muted ? "Unmute" : "Mute";
-      muteButton.setAttribute("aria-label", muted ? "Unmute" : "Mute");
+      volumeControl.classList.toggle("zydka-player-volume--muted", muted);
+      muteButton.classList.toggle("zydka-player-mute-button--muted", muted);
+      setIconButton(muteButton, muted ? "Unmute" : "Mute", muted ? "muted" : "volume");
       const queueSignature = getQueueSignature(queue, currentIndex);
       if (queueSignature !== renderedQueueSignature) {
         renderQueueItems(queue, currentIndex);

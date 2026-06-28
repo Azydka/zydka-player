@@ -1,0 +1,58 @@
+export interface AudioTrack {
+  id: string | number;
+  audioUrl: string;
+  title?: string;
+  artist?: string;
+  album?: string;
+  cover?: string;
+  buyUrl?: string;
+  buyLabel?: string;
+  downloadUrl?: string;
+  duration?: number;
+}
+
+export type AudioEngineStatus =
+  | "idle"
+  | "loading"
+  | "ready"
+  | "playing"
+  | "paused"
+  | "ended"
+  | "error";
+
+export interface AudioEngineState {
+  status: AudioEngineStatus;
+  currentTrack: AudioTrack | null;
+  position: number;
+  duration: number;
+  volume: number;
+  muted: boolean;
+  error: string | null;
+}
+
+export type AudioEngineEvent =
+  | "loaded"
+  | "playing"
+  | "paused"
+  | "ended"
+  | "error"
+  | "seeked";
+
+export interface AudioEngineEventPayload {
+  loaded: { track: AudioTrack; duration: number };
+  playing: { position: number };
+  paused: { position: number };
+  ended: { track: AudioTrack };
+  error: { message: string; track: AudioTrack | null };
+  seeked: { position: number };
+}
+
+export type AudioEngineListener<E extends AudioEngineEvent> = (
+  payload: AudioEngineEventPayload[E],
+) => void;
+
+export interface AudioEngineOptions {
+  initialVolume?: number;
+  formats?: string[];
+  debug?: boolean;
+}

@@ -213,6 +213,19 @@ Résultat :
 - Volume/mute OK.
 - Mobile à vérifier/OK selon test.
 
+## Changelog
+
+### 0.2.0 - 28/06/2026
+
+- Consolidation de la base player dans main.
+- Queue responsive en overlay.
+- Layout premium desktop/mobile.
+- Alignement/polissage du backplate.
+- Contrôles Repeat et Shuffle.
+- Contrôle Share Track avec Web Share API et fallback clipboard.
+- Bundle WordPress régénéré.
+- Validation build, TypeScript, ZIP et test navigateur WordPress réel.
+
 ## Contraintes
 
 - Plugin autonome, sans dépendance à un thème WordPress.

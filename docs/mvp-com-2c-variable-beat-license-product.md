@@ -1,103 +1,103 @@
-﻿# MVP-COM-2C - Produit beat variable WooCommerce avec licences
+# MVP-COM-2C - Produit beat variable WooCommerce avec licences
 
 Date : 2026-06-29
 
 ## Statut
 
-Statut : `bloque â€” prÃªt pour reprise Terminal cPanel / WP-CLI serveur`
+Statut : `bloque — prêt pour reprise Terminal cPanel / WP-CLI serveur`
 
 Decision :
 
 ```text
-MVP-COM-2C reste bloquÃ© tant que lâ€™accÃ¨s serveur contrÃ´lÃ© nâ€™est pas disponible
+MVP-COM-2C reste bloqué tant que l’accès serveur contrôlé n’est pas disponible
 ```
 
 ## Rappel MVP-COM-2C-PREP
 
-Cette mission prÃ©pare uniquement une reprise serveur contrÃ´lÃ©e.
+Cette mission prépare uniquement une reprise serveur contrôlée.
 
-Aucune action serveur ne doit Ãªtre exÃ©cutÃ©e depuis lâ€™environnement local tant que SSH reste en timeout et tant quâ€™aucun Terminal cPanel contrÃ´lÃ© nâ€™est disponible.
+Aucune action serveur ne doit être exécutée depuis l’environnement local tant que SSH reste en timeout et tant qu’aucun Terminal cPanel contrôlé n’est disponible.
 
-Le produit test ne doit pas Ãªtre crÃ©Ã© maintenant. La procÃ©dure documentÃ©e est uniquement prÃªte Ã  Ãªtre reprise plus tard depuis un Terminal cPanel / WP-CLI serveur contrÃ´lÃ©.
+Le produit test ne doit pas être créé maintenant. La procédure documentée est uniquement prête à être reprise plus tard depuis un Terminal cPanel / WP-CLI serveur contrôlé.
 
 ## Interdictions
 
-* Ne pas crÃ©er le produit maintenant.
-* Ne pas exÃ©cuter de commande serveur depuis lâ€™environnement local.
+* Ne pas créer le produit maintenant.
+* Ne pas exécuter de commande serveur depuis l’environnement local.
 * Ne pas modifier WooCommerce.
 * Ne pas modifier les gateways.
-* Ne pas activer ou rÃ©activer de moyen de paiement.
-* Ne pas modifier les rÃ©glages WooCommerce globaux.
+* Ne pas activer ou réactiver de moyen de paiement.
+* Ne pas modifier les réglages WooCommerce globaux.
 * Ne pas lancer de checkout.
 * Ne pas toucher aux produits existants.
-* Ne pas corriger automatiquement la base de donnÃ©es.
-* Ne pas passer Ã  MVP-COM-2D.
-* Ne pas crÃ©er de variation `Exclusive`.
+* Ne pas corriger automatiquement la base de données.
+* Ne pas passer à MVP-COM-2D.
+* Ne pas créer de variation `Exclusive`.
 * Ne pas utiliser de vrais fichiers audio.
 
 ## Verification procedure WP-CLI
 
-La procÃ©dure WP-CLI documentÃ©e doit rester strictement limitÃ©e au pÃ©rimÃ¨tre suivant :
+La procédure WP-CLI documentée doit rester strictement limitée au périmètre suivant :
 
-* CrÃ©er uniquement le produit test `MVP Test Beat â€” MÃ©moire Vive`.
-* CrÃ©er uniquement les variations `Basic`, `Standard` et `Premium`.
+* Créer uniquement le produit test `MVP Test Beat — Mémoire Vive`.
+* Créer uniquement les variations `Basic`, `Standard` et `Premium`.
 * Utiliser uniquement des fichiers `.txt` de test.
 * Garder le produit en `draft` ou `private`.
-* Garder la visibilitÃ© catalogue sur `hidden`.
+* Garder la visibilité catalogue sur `hidden`.
 * Ne lancer aucun checkout.
 * Ne modifier aucun moyen de paiement.
 * Ne modifier aucune gateway.
-* Ne toucher Ã  aucun produit existant.
-* Sâ€™arrÃªter si le slug produit ou un SKU prÃ©vu existe dÃ©jÃ .
-* Ne crÃ©er aucune variation `Exclusive`.
+* Ne toucher à aucun produit existant.
+* S’arrêter si le slug produit ou un SKU prévu existe déjà.
+* Ne créer aucune variation `Exclusive`.
 
 ## Checklist avant execution Terminal cPanel
 
-A vÃ©rifier dans le Terminal cPanel avant toute exÃ©cution WP-CLI de crÃ©ation :
+A vérifier dans le Terminal cPanel avant toute exécution WP-CLI de création :
 
-* Chemin racine WordPress confirmÃ©.
+* Chemin racine WordPress confirmé.
 * `wp core is-installed` retourne OK.
 * `wp plugin is-active woocommerce` retourne OK.
 * `wp option get woocommerce_currency` retourne la devise attendue.
-* `wp option get woocommerce_file_download_method` retourne la mÃ©thode attendue.
+* `wp option get woocommerce_file_download_method` retourne la méthode attendue.
 * `wp option get woocommerce_downloads_grant_access_after_payment` retourne la valeur attendue.
 
-Si lâ€™un de ces contrÃ´les Ã©choue, stopper MVP-COM-2C et ne pas crÃ©er le produit.
+Si l’un de ces contrôles échoue, stopper MVP-COM-2C et ne pas créer le produit.
 
 ## Checklist apres execution
 
-A renseigner uniquement aprÃ¨s une exÃ©cution serveur contrÃ´lÃ©e :
+A renseigner uniquement après une exécution serveur contrôlée :
 
 * ID produit.
 * Statut produit : `draft` ou `private`.
-* VisibilitÃ© catalogue : `hidden`.
+* Visibilité catalogue : `hidden`.
 * Type produit : `variable`.
 * Attribut `Licence`.
 * IDs variations.
 * SKUs.
 * Prix.
-* Fichiers associÃ©s.
-* Limite tÃ©lÃ©chargement : `5`.
-* Expiration tÃ©lÃ©chargement : `30` jours.
-* Moyens de paiement inchangÃ©s.
-* Gateways inchangÃ©es.
-* Aucun checkout lancÃ©.
+* Fichiers associés.
+* Limite téléchargement : `5`.
+* Expiration téléchargement : `30` jours.
+* Moyens de paiement inchangés.
+* Gateways inchangées.
+* Aucun checkout lancé.
 
 ## Rollback controle
 
-Le rollback doit supprimer uniquement les Ã©lÃ©ments crÃ©Ã©s par MVP-COM-2C :
+Le rollback doit supprimer uniquement les éléments créés par MVP-COM-2C :
 
-* Supprimer uniquement les variations crÃ©Ã©es pour le produit test.
-* Supprimer uniquement le produit test `MVP Test Beat â€” MÃ©moire Vive`.
-* Supprimer uniquement les fichiers `.txt` de test si nÃ©cessaire.
-* Ne pas toucher aux rÃ©glages WooCommerce.
+* Supprimer uniquement les variations créées pour le produit test.
+* Supprimer uniquement le produit test `MVP Test Beat — Mémoire Vive`.
+* Supprimer uniquement les fichiers `.txt` de test si nécessaire.
+* Ne pas toucher aux réglages WooCommerce.
 * Ne pas toucher aux gateways.
 * Ne pas toucher aux moyens de paiement.
 * Ne pas toucher aux autres produits.
 
 ## Decision finale
 
-MVP-COM-2C reste bloquÃ© tant que lâ€™accÃ¨s serveur contrÃ´lÃ© nâ€™est pas disponible, mais la reprise Terminal cPanel / WP-CLI serveur est prÃ©parÃ©e.
+MVP-COM-2C reste bloqué tant que l’accès serveur contrôlé n’est pas disponible, mais la reprise Terminal cPanel / WP-CLI serveur est préparée.
 
 ## Objectif
 
@@ -304,7 +304,7 @@ La mission respecte donc la regle projet : stopper avant toute creation produit 
 
 ## Commandes exactes a rejouer
 
-Quand l'acces serveur contrÃ´lÃ© est disponible, rejouer uniquement le preflight :
+Quand l'acces serveur contrôlé est disponible, rejouer uniquement le preflight :
 
 ```bash
 cd /home/zivi5632/louis94.com
@@ -331,7 +331,7 @@ echo "Louis94 Beat License Test - Standard" > wp-content/uploads/louis94-license
 echo "Louis94 Beat License Test - Premium" > wp-content/uploads/louis94-license-test/louis94-beat-premium-test.txt
 ```
 
-Puis creer le produit variable via WooCommerce REST/WP-CLI ou `wp eval` avec les classes WooCommerce, uniquement depuis le serveur contrÃ´lÃ© :
+Puis creer le produit variable via WooCommerce REST/WP-CLI ou `wp eval` avec les classes WooCommerce, uniquement depuis le serveur contrôlé :
 
 * `WC_Product_Variable` ;
 * `WC_Product_Variation` ;
@@ -339,18 +339,18 @@ Puis creer le produit variable via WooCommerce REST/WP-CLI ou `wp eval` avec les
 
 Contraintes de creation :
 
-* Produit : `MVP Test Beat â€” MÃ©moire Vive`.
+* Produit : `MVP Test Beat — Mémoire Vive`.
 * Statut : `draft` ou `private`.
-* VisibilitÃ© catalogue : `hidden`.
+* Visibilité catalogue : `hidden`.
 * Type : produit variable.
 * Attribut : `Licence`.
 * Variations : `Basic`, `Standard`, `Premium`.
 * Fichiers : `.txt` de test uniquement.
-* Limite tÃ©lÃ©chargement : `5`.
-* Expiration tÃ©lÃ©chargement : `30` jours.
+* Limite téléchargement : `5`.
+* Expiration téléchargement : `30` jours.
 * Aucun checkout.
 * Aucun changement gateway.
-* Aucun produit existant modifiÃ©.
+* Aucun produit existant modifié.
 * Aucune variation `Exclusive`.
 
 Verifier ensuite uniquement le produit et ses variations, sans checkout ni gateway :
@@ -360,75 +360,23 @@ wp wc product get PRODUCT_ID --user=1 --format=json
 wp wc product_variation list PRODUCT_ID --user=1 --format=table
 ```
 
-Les commandes de checkout, commande test, passage en `completed`, permission de tÃ©lÃ©chargement et activation/dÃ©sactivation de gateway restent hors pÃ©rimÃ¨tre tant que MVP-COM-2C est bloquÃ©.
+Les commandes de checkout, commande test, passage en `completed`, permission de téléchargement et activation/désactivation de gateway restent hors périmètre tant que MVP-COM-2C est bloqué.
 
 ## Resultat final
 
-Statut : `bloque â€” prÃªt pour reprise Terminal cPanel / WP-CLI serveur`.
+Statut : `bloque — prêt pour reprise Terminal cPanel / WP-CLI serveur`.
 
 Decision :
 
 ```text
-MVP-COM-2C reste bloquÃ© tant que lâ€™accÃ¨s serveur contrÃ´lÃ© nâ€™est pas disponible.
-Aucun produit MVP-COM-2C nâ€™a Ã©tÃ© crÃ©Ã©.
-Aucun checkout MVP-COM-2C nâ€™a Ã©tÃ© lancÃ©.
-Aucune gateway nâ€™a Ã©tÃ© modifiÃ©e.
-Aucune action WooCommerce destructive nâ€™a Ã©tÃ© exÃ©cutÃ©e.
+MVP-COM-2C reste bloqué tant que l’accès serveur contrôlé n’est pas disponible.
+Aucun produit MVP-COM-2C n’a été créé.
+Aucun checkout MVP-COM-2C n’a été lancé.
+Aucune gateway n’a été modifiée.
+Aucune action WooCommerce destructive n’a été exécutée.
 ```
 
 
-
-## Execution serveur controlee MVP-COM-2C-RUN
-
-Date : 2026-06-29
-
-Resultat : succes controle, sans checkout.
-
-Produit cree :
-
-- ID produit : `120`
-- Nom : `MVP Test Beat - Memoire Vive`
-- Type : `variable`
-- Statut : `draft`
-- Visibilite catalogue : `hidden`
-- Attribut : `Licence`
-- Variations :
-  - Basic : ID `121`, SKU `MVP-MEMOIRE-VIVE-BASIC`, prix `29`
-  - Standard : ID `122`, SKU `MVP-MEMOIRE-VIVE-STANDARD`, prix `99`
-  - Premium : ID `123`, SKU `MVP-MEMOIRE-VIVE-PREMIUM`, prix `299`
-- Fichiers test :
-  - `louis94-memoire-vive-basic-test.txt`
-  - `louis94-memoire-vive-standard-test.txt`
-  - `louis94-memoire-vive-premium-test.txt`
-- Dossier utilise : `wp-content/uploads/woocommerce_uploads/`
-- Limite telechargement : `5`
-- Expiration telechargement : `30` jours
-
-Controles effectues :
-
-- Produit parent verifie via `wp wc product get 120`
-- Variations verifiees via `wp wc product_variation list 120`
-- Variations individuelles verifiees via :
-  - `wp wc product_variation get 120 121`
-  - `wp wc product_variation get 120 122`
-  - `wp wc product_variation get 120 123`
-- Gateways relues via `wp wc payment_gateway list --user=1 --format=table`
-
-Incidents traites :
-
-- Premier dossier `wp-content/uploads/louis94-license-test/` refuse par WooCommerce car non approuve.
-- Sous-dossier `wp-content/uploads/woocommerce_uploads/louis94-license-test/` refuse aussi.
-- Produit partiel ID `117` cree puis supprime par rollback controle.
-- Script final valide avec fichiers directement dans `wp-content/uploads/woocommerce_uploads/`.
-
-Restrictions maintenues :
-
-- Aucun checkout lance.
-- Aucune commande creee.
-- Aucun paiement effectue.
-- Aucune gateway modifiee.
-- Aucun produit existant modifie.
-- Produit laisse en `draft` et `hidden`.
 
 ## Execution serveur controlee MVP-COM-2C-RUN
 

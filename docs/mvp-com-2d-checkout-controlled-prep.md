@@ -1,4 +1,4 @@
-# MVP-COM-2D-PREP - Preparation test checkout controle WooCommerce
+﻿# MVP-COM-2D-PREP - Preparation test checkout controle WooCommerce
 
 Date : 2026-06-29
 
@@ -455,7 +455,7 @@ Cause observee :
 SSH louis94.com:22 : timeout
 SSH 109.234.167.74:2222 : timeout
 WP-CLI serveur non atteint
-````
+```
 
 Consequences :
 
@@ -479,7 +479,7 @@ Decision documentee :
 
 ```text
 MVP-COM-2D-RUN arrete - No-Go serveur rencontre avant commande.
-````
+```
 
 Condition de reprise :
 
@@ -492,3 +492,4 @@ Interdiction de reprise :
 ```text
 Ne pas relancer MVP-COM-2D-RUN sans acces serveur valide et controles WP-CLI possibles.
 ```
+

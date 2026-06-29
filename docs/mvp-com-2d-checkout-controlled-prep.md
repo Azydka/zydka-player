@@ -492,4 +492,125 @@ Interdiction de reprise :
 ```text
 Ne pas relancer MVP-COM-2D-RUN sans acces serveur valide et controles WP-CLI possibles.
 ```
+## Reprise acces serveur - WP-CLI confirme MVP-COM-2D
+
+Date de reprise serveur : 2026-06-29
+
+Statut : `SERVER ACCESS OK - Terminal cPanel + WP-CLI exploitable`
+
+Le blocage serveur documente precedemment pour `MVP-COM-2D-RUN` est leve cote acces serveur via le Terminal cPanel o2switch.
+
+Acces confirme :
+
+```text
+User serveur : zivi5632
+Host : verre.o2switch.net
+Racine WordPress : /home/zivi5632/louis94.com
+siteurl : https://www.louis94.com
+home : https://www.louis94.com
+WP-CLI : disponible
+wp core is-installed : OK
+```
+
+Plugins actifs observes :
+
+```text
+novamira             1.7.0
+woocommerce          10.9.1
+zydka-analytics      0.9.1
+zydka-player         0.2.0
+zydka-player-manager 0.5.0
+```
+
+Produit test WooCommerce confirme :
+
+```text
+Product ID : 120
+Nom : MVP Test Beat — Mémoire Vive
+Slug : mvp-test-beat-memoire-vive
+Type : variable
+Status : draft
+Catalog visibility : hidden
+```
+
+Variations confirmees :
+
+```text
+121 Basic    29 EUR
+122 Standard 99 EUR
+123 Premium  299 EUR
+```
+
+Proprietes variations confirmees :
+
+```text
+virtual : true
+downloadable : true
+purchasable : true
+in_stock : true
+download_limit : 5
+download_expiry : 30
+```
+
+Options WooCommerce observees :
+
+```text
+woocommerce_currency : EUR
+woocommerce_file_download_method : force
+woocommerce_downloads_grant_access_after_payment : yes
+```
+
+Gateway de test observee :
+
+```text
+cheque : presente
+cheque enabled : false
+```
+
+Tables WooCommerce critiques observees :
+
+```text
+wpcq_woocommerce_downloadable_product_permissions : presente
+wpcq_woocommerce_order_items : presente
+wpcq_woocommerce_order_itemmeta : presente
+wpcq_wc_orders : presente
+wpcq_wc_orders_meta : presente
+wpcq_wc_order_stats : presente
+wpcq_actionscheduler_actions : presente
+```
+
+Actions serveur deja effectuees avant cette documentation :
+
+```text
+Ancien produit draft incomplet 117 supprime.
+Fichiers .txt de test crees dans wp-content/uploads/woocommerce_uploads/.
+Produit variable 120 cree.
+Variations 121, 122 et 123 creees.
+```
+
+Actions non effectuees :
+
+```text
+Aucun checkout lance.
+Aucune commande creee.
+Aucun paiement effectue.
+Aucune passerelle de paiement modifiee.
+Stripe non touche.
+PayPal non touche.
+Aucun produit reel modifie.
+```
+
+Decision actualisee :
+
+```text
+MVP-SERVER-ACCESS-RECOVERY : OK.
+MVP-COM-2C : produit variable test confirme.
+MVP-COM-2D-RUN : techniquement eligible a une future reprise controlee, mais non lance.
+```
+
+Condition stricte avant RUN :
+
+```text
+Ne pas lancer MVP-COM-2D-RUN sans protocole RUN separe, validation humaine explicite, activation temporaire controlee de cheque si necessaire, eventuel passage temporaire du produit 120 en publish + hidden si draft bloque le checkout, et rollback obligatoire.
+```
 

@@ -440,3 +440,18 @@ MVP-COM-2D-PREP prepare uniquement un futur test checkout controle.
 MVP-COM-2D-RUN n'est pas lance.
 Le RUN necessitera une decision explicite separee.
 ```
+
+## Historique RUN - No-Go serveur MVP-COM-2D
+
+Date de tentative RUN : 2026-06-29
+
+Statut : `bloque - No-Go serveur`
+
+MVP-COM-2D-RUN-EXECUTION a ete prepare avec validation humaine explicite, puis arrete avant toute action WooCommerce car l'acces serveur etait indisponible.
+
+Cause observee :
+
+```text
+SSH louis94.com:22 : timeout
+SSH 109.234.167.74:2222 : timeout
+WP-CLI serveur non atteint

@@ -1,4 +1,4 @@
-\# MVP-COM-2D-BROWSER-CART-MINI-RUN — No-Go navigateur
+﻿# MVP-COM-2D-BROWSER-CART-MINI-RUN — No-Go navigateur
 
 
 
@@ -10,7 +10,7 @@ Statut : `NO-GO navigateur / panier non confirmé`
 
 
 
-\## Résumé
+## Résumé
 
 
 
@@ -38,7 +38,7 @@ Rollback confirmé.
 
 
 
-\## Contexte documentaire
+## Contexte documentaire
 
 
 
@@ -76,7 +76,7 @@ Conclusion technique déjà acquise :
 
 URL add-to-cart correcte
 
-attribute\_licence=Basic correct
+attribute_licence=Basic correct
 
 variation 121 Basic ajoutable au panier côté HTTP/cookie
 
@@ -86,7 +86,7 @@ WooCommerce core OK côté serveur
 
 
 
-\## Périmètre strict du mini-run
+## Périmètre strict du mini-run
 
 
 
@@ -98,7 +98,7 @@ Contexte : navigation privée / session propre
 
 Produit : 120 temporairement publish + hidden si nécessaire
 
-URL : add-to-cart avec attribute\_licence=Basic
+URL : add-to-cart avec attribute_licence=Basic
 
 Sans cheque
 
@@ -142,7 +142,7 @@ Ne pas laisser le produit 120 publié.
 
 
 
-\## État initial
+## État initial
 
 
 
@@ -152,11 +152,11 @@ Avant mini-run :
 
 ```text
 
-product\_status=draft
+product_status=draft
 
-catalog\_visibility=hidden
+catalog_visibility=hidden
 
-cheque\_enabled=false
+cheque_enabled=false
 
 commande : aucune
 
@@ -166,7 +166,7 @@ paiement : aucun
 
 
 
-\## Publication temporaire contrôlée
+## Publication temporaire contrôlée
 
 
 
@@ -180,9 +180,9 @@ Snapshot avant mini-run :
 
 ```text
 
-before\_status=draft
+before_status=draft
 
-before\_catalog\_visibility=hidden
+before_catalog_visibility=hidden
 
 ```
 
@@ -194,7 +194,7 @@ Action effectuée :
 
 ```text
 
-wp wc product update 120 --status=publish --catalog\_visibility=hidden --user=1
+wp wc product update 120 --status=publish --catalog_visibility=hidden --user=1
 
 ```
 
@@ -206,9 +206,9 @@ wp wc product update 120 --status=publish --catalog\_visibility=hidden --user=1
 
 ```text
 
-product\_status=publish
+product_status=publish
 
-catalog\_visibility=hidden
+catalog_visibility=hidden
 
 purchasable=true
 
@@ -222,7 +222,7 @@ Vérification gateway :
 
 ```text
 
-cheque\_enabled=false
+cheque_enabled=false
 
 ```
 
@@ -232,7 +232,7 @@ Le gateway `cheque` n’a pas été activé pendant ce mini-run.
 
 
 
-\## URL navigateur contrôlée
+## URL navigateur contrôlée
 
 
 
@@ -242,7 +242,7 @@ URL utilisée pour le test :
 
 ```text
 
-https://www.louis94.com/?add-to-cart=120\&variation\_id=121\&attribute\_licence=Basic
+https://www.louis94.com/?add-to-cart=120\&variation_id=121\&attribute_licence=Basic
 
 ```
 
@@ -282,7 +282,7 @@ Ordre attendu :
 
 
 
-\## Résultat navigateur
+## Résultat navigateur
 
 
 
@@ -314,7 +314,7 @@ Aucun paiement n’a été effectué.
 
 
 
-\## Rappel du diagnostic serveur positif
+## Rappel du diagnostic serveur positif
 
 
 
@@ -330,11 +330,11 @@ Signaux HTTP/cookie observés lors du diagnostic add-to-cart :
 
 HTTP/2 200
 
-set-cookie: woocommerce\_items\_in\_cart=1
+set-cookie: woocommerce_items_in_cart=1
 
-set-cookie: woocommerce\_cart\_hash=...
+set-cookie: woocommerce_cart_hash=...
 
-set-cookie: wp\_woocommerce\_session\_...
+set-cookie: wp_woocommerce_session_...
 
 ```
 
@@ -346,11 +346,11 @@ Signaux cookie jar :
 
 ```text
 
-wp\_woocommerce\_session\_...
+wp_woocommerce_session_...
 
-woocommerce\_cart\_hash
+woocommerce_cart_hash
 
-woocommerce\_items\_in\_cart=1
+woocommerce_items_in_cart=1
 
 ```
 
@@ -384,7 +384,7 @@ Le problème restant concerne le contexte navigateur/front/session/cache/rendu p
 
 
 
-\## Rollback effectué
+## Rollback effectué
 
 
 
@@ -394,7 +394,7 @@ Rollback immédiat après échec navigateur :
 
 ```text
 
-wp wc product update 120 --status=draft --catalog\_visibility=hidden --user=1
+wp wc product update 120 --status=draft --catalog_visibility=hidden --user=1
 
 ```
 
@@ -406,17 +406,17 @@ Rollback confirmé :
 
 ```text
 
-product\_status=draft
+product_status=draft
 
-catalog\_visibility=hidden
+catalog_visibility=hidden
 
-cheque\_enabled=false
+cheque_enabled=false
 
 ```
 
 
 
-\## Actions non effectuées
+## Actions non effectuées
 
 
 
@@ -446,17 +446,17 @@ Aucun produit réel modifié.
 
 
 
-\## État final sécurisé
+## État final sécurisé
 
 
 
 ```text
 
-product\_status=draft
+product_status=draft
 
-catalog\_visibility=hidden
+catalog_visibility=hidden
 
-cheque\_enabled=false
+cheque_enabled=false
 
 commande : aucune
 
@@ -468,7 +468,7 @@ rollback : OK
 
 
 
-\## Décision finale
+## Décision finale
 
 
 
@@ -504,7 +504,7 @@ Rollback : OK
 
 
 
-\## Hypothèses restantes
+## Hypothèses restantes
 
 
 
@@ -538,7 +538,7 @@ mauvaise manipulation navigateur possible entre URL add-to-cart et /cart/.
 
 
 
-\## Prochain jalon recommandé
+## Prochain jalon recommandé
 
 
 
@@ -583,6 +583,7 @@ Ne pas créer de commande.
 Ne lancer aucun paiement.
 
 ```
+
 
 
 

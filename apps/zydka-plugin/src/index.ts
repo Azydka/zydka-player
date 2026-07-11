@@ -14,6 +14,8 @@ interface ZydkaTrackInput {
   buy_label?: string;
   buyUrl?: string;
   buyLabel?: string;
+  download_url?: string;
+  downloadUrl?: string;
   duration?: number;
 }
 
@@ -26,6 +28,7 @@ interface ZydkaTrack {
   album?: string;
   buyUrl?: string;
   buyLabel?: string;
+  downloadUrl?: string;
   duration?: number;
 }
 
@@ -80,6 +83,7 @@ declare global {
 
 function normalizeTrack(track: ZydkaTrackInput): ZydkaTrack | null {
   const audioUrl = track.audioUrl ?? track.src;
+  const downloadUrl = normalizeOptionalHttpUrl(track.downloadUrl ?? track.download_url);
 
   if (!audioUrl) {
     console.error(
@@ -98,8 +102,22 @@ function normalizeTrack(track: ZydkaTrackInput): ZydkaTrack | null {
     album: track.album,
     buyUrl: track.buyUrl ?? track.buy_url,
     buyLabel: track.buyLabel ?? track.buy_label,
+    ...(downloadUrl ? { downloadUrl } : {}),
     duration: track.duration,
   };
+}
+
+function normalizeOptionalHttpUrl(value: string | null | undefined): string | undefined {
+  const trimmedValue = typeof value === 'string' ? value.trim() : '';
+
+  if (!trimmedValue) return undefined;
+
+  try {
+    const parsedUrl = new URL(trimmedValue, window.location.href);
+    return parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:' ? trimmedValue : undefined;
+  } catch (_error) {
+    return undefined;
+  }
 }
 
 function normalizeQueue(tracks: ZydkaTrackInput[]): ZydkaTrack[] {
@@ -124,6 +142,7 @@ function readTrackFromRoot(root: HTMLElement): ZydkaTrackInput {
     album: root.dataset.album,
     buyUrl: root.dataset.buyUrl,
     buyLabel: root.dataset.buyLabel,
+    downloadUrl: root.dataset.downloadUrl,
   };
 }
 
@@ -172,7 +191,9 @@ function formatTime(seconds: number): string {
   return `${minutes}:${String(remainingSeconds).padStart(2, '0')}`;
 }
 
-type ControlIconName = 'shuffle' | 'previous' | 'play' | 'pause' | 'next' | 'repeat' | 'volume' | 'muted' | 'share';
+type ControlIconName = 'shuffle' | 'previous' | 'play' | 'pause' | 'next' | 'repeat' | 'volume' | 'muted' | 'favorite' | 'share';
+
+const favoritesStorageKey = 'zydkaPlayerFavorites';
 
 const controlIcons: Record<ControlIconName, string> = {
   shuffle: `
@@ -227,6 +248,11 @@ const controlIcons: Record<ControlIconName, string> = {
       <path d="M4.75 9.25h3.1l4.4-3.25v12l-4.4-3.25h-3.1v-5.5Z" />
       <path d="m16 9 4 6" />
       <path d="m20 9-4 6" />
+    </svg>
+  `,
+  favorite: `
+    <svg class="zydka-player-control-icon zydka-player-control-icon--favorite" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M12 18.5s-6.75-4.25-6.75-8.55A3.7 3.7 0 0 1 12 7.8a3.7 3.7 0 0 1 6.75 2.15C18.75 14.25 12 18.5 12 18.5Z" />
     </svg>
   `,
   share: `
@@ -405,6 +431,19 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
   const shareControl = document.createElement('div');
   shareControl.className = 'zydka-player-share';
 
+  const downloadLink = document.createElement('a');
+  downloadLink.className = 'zydka-player-button zydka-player-download-link';
+  downloadLink.target = '_blank';
+  downloadLink.rel = 'noopener noreferrer';
+  downloadLink.textContent = 'Télécharger';
+  downloadLink.hidden = true;
+
+  const favoriteButton = document.createElement('button');
+  favoriteButton.className = 'zydka-player-button zydka-player-icon-button zydka-player-mode-button zydka-player-favorite-button';
+  favoriteButton.type = 'button';
+  favoriteButton.setAttribute('aria-pressed', 'false');
+  setIconButton(favoriteButton, 'Ajouter aux favoris', 'favorite');
+
   const shareButton = document.createElement('button');
   shareButton.className = 'zydka-player-button zydka-player-icon-button zydka-player-mode-button zydka-player-share-button';
   shareButton.type = 'button';
@@ -415,7 +454,7 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
   shareFeedback.setAttribute('aria-live', 'polite');
   shareFeedback.hidden = true;
 
-  shareControl.append(shareButton, shareFeedback);
+  shareControl.append(downloadLink, favoriteButton, shareButton, shareFeedback);
 
   const queueOverlay = document.createElement('div');
   queueOverlay.className = 'zydka-player-queue-overlay';
@@ -482,6 +521,62 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
   let shuffleHistory: number[] = [];
   let handledEndedSignature = '';
   let shareFeedbackTimer: number | undefined;
+  let favoriteKeys = new Set<string>();
+
+  const readFavoriteKeys = (): Set<string> => {
+    try {
+      const storedFavorites = window.localStorage.getItem(favoritesStorageKey);
+      const parsedFavorites = storedFavorites ? JSON.parse(storedFavorites) : [];
+
+      if (Array.isArray(parsedFavorites)) {
+        return new Set(parsedFavorites.filter((value): value is string => typeof value === 'string'));
+      }
+    } catch (_error) {
+      return new Set<string>();
+    }
+
+    return new Set<string>();
+  };
+
+  const saveFavoriteKeys = (): void => {
+    try {
+      window.localStorage.setItem(favoritesStorageKey, JSON.stringify(Array.from(favoriteKeys)));
+    } catch (_error) {
+      // localStorage can be unavailable in private contexts; keep the player usable.
+    }
+  };
+
+  const getFavoriteKey = (track: ZydkaTrack | null | undefined): string | null => {
+    if (!track) return null;
+
+    const id = String(track.id ?? '').trim();
+    if (id) return `id:${id}`;
+
+    const audioUrl = track.audioUrl.trim();
+    if (audioUrl) return `url:${audioUrl}`;
+
+    const title = track.title?.trim();
+    return title ? `title:${title}` : null;
+  };
+
+  const isFavoriteTrack = (track: ZydkaTrack | null | undefined): boolean => {
+    const favoriteKey = getFavoriteKey(track);
+    return favoriteKey ? favoriteKeys.has(favoriteKey) : false;
+  };
+
+  const toggleFavoriteTrack = (track: ZydkaTrack | null | undefined): boolean => {
+    const favoriteKey = getFavoriteKey(track);
+    if (!favoriteKey) return false;
+
+    if (favoriteKeys.has(favoriteKey)) {
+      favoriteKeys.delete(favoriteKey);
+    } else {
+      favoriteKeys.add(favoriteKey);
+    }
+
+    saveFavoriteKeys();
+    return favoriteKeys.has(favoriteKey);
+  };
 
   const getDisplayCoverUrl = (track: ZydkaTrack | null | undefined): string | null => {
     if (!track) return null;
@@ -900,6 +995,18 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
       buyLink.hidden = true;
     }
 
+    const downloadUrl = displayTrack?.downloadUrl?.trim();
+
+    if (downloadUrl) {
+      downloadLink.href = downloadUrl;
+      downloadLink.setAttribute('aria-label', `Télécharger ${renderText(displayTrack?.title || 'la track')}`);
+      downloadLink.hidden = false;
+    } else {
+      downloadLink.removeAttribute('href');
+      downloadLink.removeAttribute('aria-label');
+      downloadLink.hidden = true;
+    }
+
     coverFallback.textContent = getCoverLabel(displayTrack ?? fallbackDisplayTrack);
     requestEmbeddedCover(displayTrack);
 
@@ -929,6 +1036,11 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
     repeatButton.dataset.repeatMode = repeatMode;
     repeatButton.setAttribute('aria-pressed', String(repeatMode !== 'off'));
     setIconButton(repeatButton, getRepeatLabel(), 'repeat');
+    const favoriteActive = isFavoriteTrack(displayTrack);
+    favoriteButton.classList.toggle('zydka-player-mode-button--active', favoriteActive);
+    favoriteButton.classList.toggle('zydka-player-favorite-button--active', favoriteActive);
+    favoriteButton.setAttribute('aria-pressed', String(favoriteActive));
+    setIconButton(favoriteButton, favoriteActive ? 'Retirer des favoris' : 'Ajouter aux favoris', 'favorite');
     setIconButton(shareButton, `Partager ${renderText(displayTrack?.title || 'le morceau')}`, 'share');
     previousButton.disabled = shuffleEnabled ? shuffleHistory.length === 0 && currentIndex <= 0 : currentIndex <= 0;
     nextButton.disabled = !canGoNext;
@@ -1013,6 +1125,16 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
     void shareCurrentTrack();
   });
 
+  favoriteButton.addEventListener('click', () => {
+    const state = window.ZydkaPlayer?.state();
+    const queue = window.ZydkaPlayer?.getQueue() ?? state?.queue ?? [];
+    const currentIndex = window.ZydkaPlayer?.getCurrentIndex() ?? state?.currentIndex ?? -1;
+    const displayTrack = state?.currentTrack ?? queue[currentIndex] ?? normalizeTrack(fallbackDisplayTrack);
+
+    toggleFavoriteTrack(displayTrack);
+    refreshState();
+  });
+
   queueButton.addEventListener('click', () => {
     setQueueOpen(!isQueueOpen);
   });
@@ -1078,6 +1200,7 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
     mediaSession.refreshPosition();
   });
 
+  favoriteKeys = readFavoriteKeys();
   refreshState();
   window.setInterval(refreshState, 250);
 }

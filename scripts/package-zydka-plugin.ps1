@@ -1,12 +1,42 @@
+param(
+    [ValidateSet("player", "manager")]
+    [string]$Plugin = "player"
+)
+
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot = Resolve-Path (Join-Path $scriptDir "..")
-$pluginSource = Join-Path $repoRoot "apps\zydka-plugin"
+
+# player: built from TypeScript, only the runtime files are shipped.
+# manager: imported as-is from production, every file is shipped.
+$pluginConfigs = @{
+    player  = @{
+        Source       = "apps\zydka-plugin"
+        Slug         = "zydka-player"
+        BuildFilter  = "@zydka/zydka-plugin"
+        RuntimeFiles = @(
+            "zydka-player.php",
+            "README.md",
+            "assets\css\zydka-player.css",
+            "assets\js\zydka-player.js"
+        )
+    }
+    manager = @{
+        Source       = "apps\zydka-player-manager"
+        Slug         = "zydka-player-manager"
+        BuildFilter  = $null
+        RuntimeFiles = $null
+    }
+}
+
+$config = $pluginConfigs[$Plugin]
+$pluginSource = Join-Path $repoRoot $config.Source
+$slug = $config.Slug
 $distDir = Join-Path $repoRoot "dist"
-$stageRoot = Join-Path $distDir "zydka-player"
-$zipPath = Join-Path $distDir "zydka-player.zip"
+$stageRoot = Join-Path $distDir $slug
+$zipPath = Join-Path $distDir "$slug.zip"
 
 function Assert-ChildPath {
     param(
@@ -39,8 +69,25 @@ function Copy-RuntimeFile {
     Copy-Item -LiteralPath $source -Destination $destination -Force
 }
 
-$pnpm = Get-Command pnpm.cmd -ErrorAction Stop
-& $pnpm.Source --filter @zydka/zydka-plugin build
+if ($config.BuildFilter) {
+    $pnpm = Get-Command pnpm.cmd -ErrorAction Stop
+    & $pnpm.Source --filter $config.BuildFilter build
+}
+
+$runtimeFiles = $config.RuntimeFiles
+
+if (-not $runtimeFiles) {
+    $sourceFull = [System.IO.Path]::GetFullPath($pluginSource).TrimEnd('\') + '\'
+    $runtimeFiles = @(
+        Get-ChildItem -LiteralPath $pluginSource -Recurse -File -Force |
+            Sort-Object FullName |
+            ForEach-Object { $_.FullName.Substring($sourceFull.Length) }
+    )
+}
+
+if ($runtimeFiles.Count -eq 0) {
+    throw "No runtime files found in $pluginSource"
+}
 
 Assert-ChildPath -Parent $repoRoot -Child $distDir
 Assert-ChildPath -Parent $repoRoot -Child $stageRoot
@@ -60,30 +107,22 @@ if (Test-Path -LiteralPath $zipPath) {
 
 New-Item -ItemType Directory -Path $stageRoot | Out-Null
 
-Copy-RuntimeFile "zydka-player.php"
-Copy-RuntimeFile "README.md"
-Copy-RuntimeFile "assets\css\zydka-player.css"
-Copy-RuntimeFile "assets\js\zydka-player.js"
+foreach ($runtimeFile in $runtimeFiles) {
+    Copy-RuntimeFile $runtimeFile
+}
 
 Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $archive = [System.IO.Compression.ZipFile]::Open($zipPath, [System.IO.Compression.ZipArchiveMode]::Create)
 
 try {
-    [void]$archive.CreateEntry("zydka-player/")
+    [void]$archive.CreateEntry("$slug/")
 
-    $runtimeEntries = @(
-        @{ Source = Join-Path $stageRoot "zydka-player.php"; Entry = "zydka-player/zydka-player.php" },
-        @{ Source = Join-Path $stageRoot "README.md"; Entry = "zydka-player/README.md" },
-        @{ Source = Join-Path $stageRoot "assets\css\zydka-player.css"; Entry = "zydka-player/assets/css/zydka-player.css" },
-        @{ Source = Join-Path $stageRoot "assets\js\zydka-player.js"; Entry = "zydka-player/assets/js/zydka-player.js" }
-    )
-
-    foreach ($runtimeEntry in $runtimeEntries) {
+    foreach ($runtimeFile in $runtimeFiles) {
         [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile(
             $archive,
-            $runtimeEntry.Source,
-            $runtimeEntry.Entry,
+            (Join-Path $stageRoot $runtimeFile),
+            "$slug/" + $runtimeFile.Replace("\", "/"),
             [System.IO.Compression.CompressionLevel]::Optimal
         ) | Out-Null
     }
@@ -96,13 +135,7 @@ $archive = [System.IO.Compression.ZipFile]::OpenRead($zipPath)
 
 try {
     $entries = @($archive.Entries | ForEach-Object { $_.FullName.Replace("\", "/") })
-    $requiredEntries = @(
-        "zydka-player/",
-        "zydka-player/zydka-player.php",
-        "zydka-player/README.md",
-        "zydka-player/assets/css/zydka-player.css",
-        "zydka-player/assets/js/zydka-player.js"
-    )
+    $requiredEntries = @("$slug/") + @($runtimeFiles | ForEach-Object { "$slug/" + $_.Replace("\", "/") })
 
     foreach ($entry in $requiredEntries) {
         if ($entries -notcontains $entry) {
@@ -110,10 +143,14 @@ try {
         }
     }
 
+    if ($entries.Count -ne $requiredEntries.Count) {
+        throw "ZIP contains $($entries.Count) entries, expected $($requiredEntries.Count)"
+    }
+
     $forbiddenPatterns = @(
-        "apps/zydka-plugin/",
+        "apps/",
         "dist/",
-        "zydka-player/zydka-player/",
+        "$slug/$slug/",
         "node_modules/",
         "src/",
         "package.json",

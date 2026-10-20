@@ -84,6 +84,15 @@ audioEngine.on("error", ({ message }) => {
   });
 });
 
+/**
+ * Called once per finished track, after the store switched to "ended". Listening to
+ * the engine (not to store updates) keeps every listener notified even when one of
+ * them immediately starts the next track.
+ */
+export function onTrackEnded(listener: () => void): () => void {
+  return audioEngine.on("ended", () => listener());
+}
+
 export const usePlayerStore = createStore<IPlayerState>((set, get) => ({
   currentTrack: null,
   currentIndex: -1,

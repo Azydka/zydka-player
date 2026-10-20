@@ -2,6 +2,14 @@ import { WordPressBridge } from '@zydka/wordpress-bridge';
 import { getEmbeddedCoverUrl, revokeEmbeddedCoverCache } from './metadataCover';
 import { setupMediaSession } from './mediaSession';
 import {
+  cycleRepeatMode,
+  getNextTrack,
+  getPreviousIndex,
+  type AdvanceReason,
+  type QueueNavigationState,
+  type RepeatMode,
+} from './queueNavigation';
+import {
   clampSeekTime,
   formatTime,
   getKeyboardSeekTarget,
@@ -69,10 +77,9 @@ interface ZydkaPlayerAPI {
   mute: () => void;
   unmute: () => void;
   isMuted: () => boolean;
+  onEnded: (listener: () => void) => () => void;
   state: () => ZydkaPlayerState;
 }
-
-type RepeatMode = 'off' | 'queue' | 'one';
 
 const fallbackTrack: ZydkaTrackInput = {
   id: 'demo-track',
@@ -474,7 +481,7 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
   let repeatMode: RepeatMode = 'off';
   let shuffleEnabled = false;
   let shuffleHistory: number[] = [];
-  let handledEndedSignature = '';
+  let shufflePlayed: number[] = [];
   let shareFeedbackTimer: number | undefined;
   let isUserSeeking = false;
   let pendingSeekSeconds: number | null = null;
@@ -515,81 +522,67 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
     }
 
     const currentIndex = window.ZydkaPlayer?.getCurrentIndex() ?? 0;
-    window.ZydkaPlayer?.playAt(Math.max(0, currentIndex));
+    playAtIndex(Math.max(0, currentIndex), { resetShuffleHistory: false });
   };
 
-  const getRandomQueueIndex = (queueLength: number, currentIndex: number): number => {
-    if (queueLength <= 0) return -1;
-    if (queueLength === 1) return 0;
+  const getNavigationState = (): QueueNavigationState => ({
+    queueLength: window.ZydkaPlayer?.getQueue().length ?? 0,
+    currentIndex: window.ZydkaPlayer?.getCurrentIndex() ?? -1,
+    repeatMode,
+    shuffle: shuffleEnabled,
+    shufflePlayed,
+  });
 
-    let nextIndex = Math.floor(Math.random() * queueLength);
-
-    if (nextIndex === currentIndex) {
-      nextIndex = (nextIndex + 1 + Math.floor(Math.random() * (queueLength - 1))) % queueLength;
-    }
-
-    return nextIndex;
-  };
-
+  // Every track start goes through here so the shuffle cycle knows what was played.
   const playAtIndex = (index: number, options: { resetShuffleHistory?: boolean } = {}): boolean => {
     const didPlay = window.ZydkaPlayer?.playAt(index) ?? false;
 
-    if (didPlay && options.resetShuffleHistory !== false) {
+    if (!didPlay) return false;
+
+    if (options.resetShuffleHistory !== false) {
       shuffleHistory = [];
     }
 
-    return didPlay;
+    if (!shufflePlayed.includes(index)) {
+      shufflePlayed = [...shufflePlayed, index];
+    }
+
+    return true;
   };
 
-  const playNextTrack = (): boolean => {
-    const state = window.ZydkaPlayer?.state();
-    const queue = window.ZydkaPlayer?.getQueue() ?? state?.queue ?? [];
-    const currentIndex = window.ZydkaPlayer?.getCurrentIndex() ?? state?.currentIndex ?? -1;
+  const playNextTrack = (reason: AdvanceReason = 'user'): boolean => {
+    const navigation = getNavigationState();
+    const nextTrack = getNextTrack(navigation, reason);
 
-    if (queue.length === 0) return false;
+    if (!nextTrack) return false;
 
-    if (shuffleEnabled) {
-      const nextIndex = getRandomQueueIndex(queue.length, currentIndex);
-
-      if (nextIndex < 0) return false;
-      if (currentIndex >= 0 && queue.length > 1) {
-        shuffleHistory.push(currentIndex);
-      }
-
-      return playAtIndex(nextIndex, { resetShuffleHistory: false });
+    if (shuffleEnabled && navigation.currentIndex >= 0 && nextTrack.index !== navigation.currentIndex) {
+      shuffleHistory.push(navigation.currentIndex);
     }
 
-    if (currentIndex < queue.length - 1) {
-      return window.ZydkaPlayer?.next() ?? false;
+    if (nextTrack.startsNewShuffleCycle) {
+      shufflePlayed = [];
     }
 
-    if (repeatMode === 'queue') {
-      return playAtIndex(0);
-    }
-
-    return false;
+    return playAtIndex(nextTrack.index, { resetShuffleHistory: false });
   };
 
   const playPreviousTrack = (): boolean => {
-    if (shuffleEnabled && shuffleHistory.length > 0) {
-      const previousIndex = shuffleHistory.pop();
+    const previousIndex = getPreviousIndex(getNavigationState(), shuffleHistory);
 
-      if (typeof previousIndex === 'number') {
-        return playAtIndex(previousIndex, { resetShuffleHistory: false });
-      }
+    if (previousIndex === null) return false;
+
+    if (shuffleEnabled && shuffleHistory[shuffleHistory.length - 1] === previousIndex) {
+      shuffleHistory.pop();
     }
 
-    return window.ZydkaPlayer?.previous() ?? false;
+    return playAtIndex(previousIndex, { resetShuffleHistory: false });
   };
 
   const getRepeatLabel = (): string => {
     if (repeatMode === 'queue') return 'Répéter la file';
     if (repeatMode === 'one') return 'Répéter le morceau';
     return 'Activer la répétition';
-  };
-
-  const cycleRepeatMode = (): void => {
-    repeatMode = repeatMode === 'off' ? 'queue' : repeatMode === 'queue' ? 'one' : 'off';
   };
 
   const getShareUrl = (track: ZydkaTrack | null | undefined): string => {
@@ -654,44 +647,6 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
     showShareFeedback('Impossible de copier');
   };
 
-  const handleEndedPlayback = (state: ZydkaPlayerState, queue: ZydkaTrack[], currentIndex: number): void => {
-    if (state.status !== 'ended' || repeatMode === 'off') {
-      if (state.status !== 'ended') {
-        handledEndedSignature = '';
-      }
-
-      return;
-    }
-
-    const endedSignature = `${currentIndex}:${state.currentTrack?.id ?? ''}:${Math.round(state.duration)}`;
-
-    if (endedSignature === handledEndedSignature) return;
-
-    handledEndedSignature = endedSignature;
-
-    if (repeatMode === 'one') {
-      playAtIndex(Math.max(0, currentIndex), { resetShuffleHistory: false });
-      return;
-    }
-
-    if (queue.length === 0) return;
-
-    if (shuffleEnabled) {
-      const nextIndex = getRandomQueueIndex(queue.length, currentIndex);
-      if (nextIndex >= 0) {
-        playAtIndex(nextIndex, { resetShuffleHistory: false });
-      }
-
-      return;
-    }
-
-    if (currentIndex < queue.length - 1) {
-      playAtIndex(Math.max(0, currentIndex + 1), { resetShuffleHistory: false });
-    } else {
-      playAtIndex(0, { resetShuffleHistory: false });
-    }
-  };
-
   const getSeekDuration = (): number => window.ZydkaPlayer?.getDuration() ?? 0;
 
   const clearSeekReleaseTimer = (): void => {
@@ -750,6 +705,13 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
     getCurrentTime: () => window.ZydkaPlayer?.getCurrentTime() ?? 0,
     getDuration: () => window.ZydkaPlayer?.getDuration() ?? 0,
     isPlaying: () => window.ZydkaPlayer?.state().isPlaying ?? false,
+  });
+
+  // Chain tracks from the audio "end" event rather than the UI refresh timer, which
+  // browsers throttle while the phone is locked or the tab is hidden.
+  window.ZydkaPlayer?.onEnded(() => {
+    playNextTrack('ended');
+    refreshState();
   });
 
   type QueueOpenOptions = {
@@ -881,7 +843,7 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
       item.append(thumb, meta, itemDuration);
 
       item.addEventListener('click', () => {
-        window.ZydkaPlayer?.playAt(index);
+        playAtIndex(index, { resetShuffleHistory: false });
         refreshState();
 
         if (isMobileQueueView()) {
@@ -921,7 +883,9 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
     const volume = window.ZydkaPlayer?.getVolume() ?? state.volume;
     const muted = window.ZydkaPlayer?.isMuted() ?? state.muted;
     const hasQueue = queue.length > 1;
-    const canGoNext = queue.length > 0 && (shuffleEnabled || currentIndex < queue.length - 1 || repeatMode === 'queue');
+    const navigation = getNavigationState();
+    // Only whether a next track exists matters here, so the random pick is fixed.
+    const canGoNext = getNextTrack(navigation, 'user', () => 0) !== null;
 
     if (hasQueue !== hasMultipleQueuedTracks) {
       hasMultipleQueuedTracks = hasQueue;
@@ -977,7 +941,7 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
     repeatButton.setAttribute('aria-pressed', String(repeatMode !== 'off'));
     setIconButton(repeatButton, getRepeatLabel(), 'repeat');
     setIconButton(shareButton, `Partager ${renderText(displayTrack?.title || 'le morceau')}`, 'share');
-    previousButton.disabled = shuffleEnabled ? shuffleHistory.length === 0 && currentIndex <= 0 : currentIndex <= 0;
+    previousButton.disabled = getPreviousIndex(navigation, shuffleHistory) === null;
     nextButton.disabled = !canGoNext;
     toggleButton.classList.toggle('zydka-player-toggle-button--playing', state.isPlaying);
     setIconButton(toggleButton, state.isPlaying ? 'Pause' : 'Play', state.isPlaying ? 'pause' : 'play');
@@ -1017,8 +981,6 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
         mediaSession.refreshPosition();
       }
     }
-
-    handleEndedPlayback(state, queue, currentIndex);
   };
 
   coverImage.addEventListener('error', () => {
@@ -1059,11 +1021,14 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
   shuffleButton.addEventListener('click', () => {
     shuffleEnabled = !shuffleEnabled;
     shuffleHistory = [];
+
+    const currentIndex = window.ZydkaPlayer?.getCurrentIndex() ?? -1;
+    shufflePlayed = currentIndex >= 0 ? [currentIndex] : [];
     refreshState();
   });
 
   repeatButton.addEventListener('click', () => {
-    cycleRepeatMode();
+    repeatMode = cycleRepeatMode(repeatMode);
     refreshState();
   });
 
@@ -1231,6 +1196,7 @@ function bootstrap(): void {
     mute: () => WordPressBridge.mute(),
     unmute: () => WordPressBridge.unmute(),
     isMuted: () => WordPressBridge.isMuted(),
+    onEnded: (listener: () => void) => WordPressBridge.onEnded(listener),
     state: () => {
       const { currentTrack, currentIndex, queue, status, isPlaying, position, duration, volume, muted, error } = WordPressBridge.state();
       return { currentTrack, currentIndex, queue, status, isPlaying, position, duration, volume, muted, error };

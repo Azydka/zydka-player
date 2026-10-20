@@ -71,6 +71,10 @@ export class WordPressBridge {
     return PlayerController.isMuted();
   }
 
+  static onEnded(listener: () => void) {
+    return PlayerController.onEnded(listener);
+  }
+
   static state() {
     return PlayerController.state();
   }

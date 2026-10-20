@@ -1,4 +1,4 @@
-import { usePlayerStore } from "./store";
+import { onTrackEnded, usePlayerStore } from "./store";
 import type { ITrack } from "./types";
 
 export const PlayerController = {
@@ -68,6 +68,14 @@ export const PlayerController = {
 
   isMuted() {
     return usePlayerStore.getState().isMuted();
+  },
+
+  /**
+   * Runs from the audio "end" event, so the next track can start even while
+   * timers are throttled (locked phone, hidden tab).
+   */
+  onEnded(listener: () => void): () => void {
+    return onTrackEnded(listener);
   },
 
   state() {

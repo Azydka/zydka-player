@@ -132,7 +132,6 @@
 .zydka-player-title,
 .zydka-player-artist,
 .zydka-player-counter,
-.zydka-player-status,
 .zydka-player-error {
   margin: 0;
 }
@@ -864,45 +863,23 @@
 
 .zydka-player-footer {
   display: flex;
-  gap: 12px;
-  align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   margin-top: 18px;
 }
 
-.zydka-player-status {
-  color: var(--zydka-muted);
-  font-size: 13px;
-  line-height: 1.35;
-}
-
-.zydka-player-status span {
-  font-weight: 850;
-}
-
-.zydka-player-state-playing .zydka-player-status span {
-  color: var(--zydka-red);
-}
-
-.zydka-player-state-paused .zydka-player-status span,
-.zydka-player-state-ended .zydka-player-status span,
-.zydka-player-state-idle .zydka-player-status span {
-  color: var(--zydka-muted);
+.zydka-player-footer[hidden] {
+  display: none;
 }
 
 .zydka-player-state-error {
   border-color: rgba(122, 31, 31, 0.44);
 }
 
-.zydka-player-state-error .zydka-player-status span,
 .zydka-player-error {
   color: #8c1d1d;
-}
-
-.zydka-player-error {
   font-size: 13px;
   line-height: 1.35;
-  text-align: right;
+  text-align: center;
 }
 
 @media (min-width: 900px) {
@@ -1037,28 +1014,6 @@
     justify-content: center;
     width: min(100%, 680px);
     margin: 16px auto 0;
-  }
-
-  .zydka-player-status {
-    color: rgba(107, 98, 89, 0.58);
-    font-size: 11px;
-    opacity: 0.52;
-  }
-
-  .zydka-player-status span {
-    color: inherit;
-    font-weight: 700;
-  }
-
-  .zydka-player-state-playing .zydka-player-status span,
-  .zydka-player-state-paused .zydka-player-status span,
-  .zydka-player-state-ended .zydka-player-status span,
-  .zydka-player-state-idle .zydka-player-status span {
-    color: inherit;
-  }
-
-  .zydka-player-error {
-    margin-left: auto;
   }
 
   .zydka-player-queue-overlay {

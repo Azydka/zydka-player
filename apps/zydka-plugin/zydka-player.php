@@ -41,15 +41,27 @@ function zydka_player_enqueue_assets(): void {
 add_action( 'wp_enqueue_scripts', 'zydka_player_enqueue_assets' );
 
 /**
+ * Message réservé aux éditeurs quand un shortcode n'a rien à lire.
+ * Les visiteurs ne voient rien.
+ */
+function zydka_player_editor_notice( string $message ): string {
+    if ( ! current_user_can( 'edit_posts' ) ) {
+        return '';
+    }
+
+    return sprintf( '<p class="zydka-player-notice">%s</p>', esc_html( $message ) );
+}
+
+/**
  * Génère le conteneur HTML du player et injecte les données track/playlist.
  */
 function zydka_player_render_container( array $attrs = [], array $tracks = [] ): string {
     $data_attributes = sprintf(
         'data-source="%s" data-track-id="%s" data-title="%s" data-artist="%s" data-album="%s" data-src="%s" data-cover="%s" data-buy-url="%s" data-buy-label="%s"',
         esc_attr( $attrs['source'] ?? 'shortcode' ),
-        esc_attr( $attrs['id'] ?? 'demo-track' ),
-        esc_attr( $attrs['title'] ?? 'Demo Track' ),
-        esc_attr( $attrs['artist'] ?? 'Atelier Zydka' ),
+        esc_attr( $attrs['id'] ?? '' ),
+        esc_attr( $attrs['title'] ?? '' ),
+        esc_attr( $attrs['artist'] ?? '' ),
         esc_attr( $attrs['album'] ?? '' ),
         esc_url( $attrs['src'] ?? '' ),
         esc_url( $attrs['cover'] ?? '' ),
@@ -77,9 +89,9 @@ function zydka_player_render_container( array $attrs = [], array $tracks = [] ):
 function zydka_player_shortcode( $atts = [] ): string {
     $atts = shortcode_atts(
         [
-            'id'     => 'demo-track',
-            'title'  => 'Demo Track',
-            'artist' => 'Atelier Zydka',
+            'id'     => '',
+            'title'  => '',
+            'artist' => '',
             'src'    => '',
             'album'  => '',
             'cover'  => '',
@@ -98,6 +110,16 @@ function zydka_player_shortcode( $atts = [] ): string {
     $atts['cover']  = esc_url_raw( $atts['cover'] );
     $atts['buy_url'] = esc_url_raw( $atts['buy_url'] );
     $atts['buy_label'] = sanitize_text_field( $atts['buy_label'] );
+
+    if ( '' === $atts['src'] ) {
+        return zydka_player_editor_notice(
+            __( 'Zydka Player : ajoutez l’URL du fichier audio avec l’attribut src.', 'zydka-player' )
+        );
+    }
+
+    if ( '' === $atts['id'] ) {
+        $atts['id'] = 'track-1';
+    }
 
     return zydka_player_render_container( $atts );
 }
@@ -119,17 +141,13 @@ function zydka_playlist_shortcode( $atts = [], $content = null ): string {
     $tracks = $zydka_playlist_tracks;
     $zydka_playlist_tracks = $previous_tracks;
 
-    $first_track = $tracks[0] ?? [
-        'id'     => 'demo-track',
-        'title'  => 'Demo Track',
-        'artist' => 'Atelier Zydka',
-        'src'    => '',
-        'album'  => '',
-        'cover'  => '',
-        'buy_url' => '',
-        'buy_label' => '',
-    ];
+    if ( empty( $tracks ) ) {
+        return zydka_player_editor_notice(
+            __( 'Zydka Player : cette playlist ne contient aucun morceau avec un attribut src.', 'zydka-player' )
+        );
+    }
 
+    $first_track = $tracks[0];
     $first_track['source'] = 'playlist';
 
     return zydka_player_render_container( $first_track, $tracks );

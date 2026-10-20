@@ -1,6 +1,15 @@
 import { WordPressBridge } from '@zydka/wordpress-bridge';
 import { getEmbeddedCoverUrl, revokeEmbeddedCoverCache } from './metadataCover';
 import { setupMediaSession } from './mediaSession';
+import {
+  clampSeekTime,
+  formatTime,
+  getKeyboardSeekTarget,
+  getTimelineDisplay,
+  isKnownDuration,
+  needsEmbeddedCover,
+  resolveCoverUrl,
+} from './timeline';
 
 interface ZydkaTrackInput {
   id: string | number;
@@ -154,22 +163,8 @@ function getCoverLabel(track: ZydkaTrackInput | ZydkaTrack | null | undefined): 
   return String(label).trim().charAt(0).toUpperCase() || 'Z';
 }
 
-function hasExplicitCover(track: ZydkaTrack | null | undefined): boolean {
-  return Boolean(track?.cover?.trim());
-}
-
 function getBuyLabel(track: ZydkaTrack | null | undefined): string {
   return track?.buyLabel?.trim() || 'Voir le projet';
-}
-
-function formatTime(seconds: number): string {
-  if (!Number.isFinite(seconds) || seconds <= 0) return '0:00';
-
-  const totalSeconds = Math.floor(seconds);
-  const minutes = Math.floor(totalSeconds / 60);
-  const remainingSeconds = totalSeconds % 60;
-
-  return `${minutes}:${String(remainingSeconds).padStart(2, '0')}`;
 }
 
 type ControlIconName = 'shuffle' | 'previous' | 'play' | 'pause' | 'next' | 'repeat' | 'volume' | 'muted' | 'share';
@@ -360,22 +355,21 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
   currentTime.className = 'zydka-player-time';
   currentTime.textContent = '0:00';
 
-  const progress = document.createElement('button');
+  // Native range input: tap AND drag work with a finger, keyboard and screen readers.
+  const progress = document.createElement('input');
   progress.className = 'zydka-player-progress';
-  progress.type = 'button';
-  progress.setAttribute('aria-label', 'Seek');
-  progress.setAttribute('aria-valuemin', '0');
-  progress.setAttribute('aria-valuemax', '100');
-  progress.setAttribute('aria-valuenow', '0');
-  progress.setAttribute('role', 'slider');
-
-  const progressFill = document.createElement('span');
-  progressFill.className = 'zydka-player-progress-fill';
-  progress.append(progressFill);
+  progress.type = 'range';
+  progress.min = '0';
+  progress.max = '0';
+  progress.step = 'any';
+  progress.value = '0';
+  progress.disabled = true;
+  progress.setAttribute('aria-label', 'Position dans le morceau');
+  progress.setAttribute('aria-valuetext', '0:00 / --:--');
 
   const duration = document.createElement('span');
   duration.className = 'zydka-player-time';
-  duration.textContent = '0:00';
+  duration.textContent = '--:--';
 
   timeline.append(currentTime, progress, duration);
 
@@ -482,15 +476,23 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
   let shuffleHistory: number[] = [];
   let handledEndedSignature = '';
   let shareFeedbackTimer: number | undefined;
+  let isUserSeeking = false;
+  let pendingSeekSeconds: number | null = null;
+  let seekReleaseTimer: number | undefined;
 
+  // Explicit cover first; if it fails to load, fall back to the cover embedded in the MP3
+  // so the player and the lock screen never point at a broken image.
   const getDisplayCoverUrl = (track: ZydkaTrack | null | undefined): string | null => {
     if (!track) return null;
-    if (hasExplicitCover(track)) return track.cover ?? null;
-    return embeddedCoverUrls.get(track.audioUrl) ?? null;
+    return resolveCoverUrl(track.cover, embeddedCoverUrls.get(track.audioUrl), failedCoverUrls);
   };
 
   const requestEmbeddedCover = (track: ZydkaTrack | null | undefined): void => {
-    if (!track || hasExplicitCover(track) || requestedEmbeddedCoverUrls.has(track.audioUrl)) {
+    if (
+      !track ||
+      !needsEmbeddedCover(track.cover, failedCoverUrls) ||
+      requestedEmbeddedCoverUrls.has(track.audioUrl)
+    ) {
       return;
     }
 
@@ -690,6 +692,47 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
     }
   };
 
+  const getSeekDuration = (): number => window.ZydkaPlayer?.getDuration() ?? 0;
+
+  const clearSeekReleaseTimer = (): void => {
+    if (seekReleaseTimer !== undefined) {
+      window.clearTimeout(seekReleaseTimer);
+      seekReleaseTimer = undefined;
+    }
+  };
+
+  // Single seek path for the timeline (tap, drag, keyboard) and the lock screen (seekto).
+  // Seeking once on release avoids the pause/play cycle Howler does on every seek in
+  // HTML5 mode, which made dragging choppy on mobile.
+  const commitSeek = (seconds: number): void => {
+    const target = clampSeekTime(seconds, getSeekDuration());
+
+    isUserSeeking = false;
+    progress.classList.remove('zydka-player-progress--dragging');
+    clearSeekReleaseTimer();
+
+    if (target === null) {
+      pendingSeekSeconds = null;
+      refreshState();
+      return;
+    }
+
+    // Keep showing the target briefly so the thumb does not flash back to the old position.
+    pendingSeekSeconds = target;
+    window.ZydkaPlayer?.seek(target);
+    refreshState();
+    mediaSession.refreshPosition();
+
+    seekReleaseTimer = window.setTimeout(() => {
+      seekReleaseTimer = undefined;
+
+      if (isUserSeeking) return;
+
+      pendingSeekSeconds = null;
+      refreshState();
+    }, 300);
+  };
+
   const mediaSession = setupMediaSession({
     getCurrentTrack: () => window.ZydkaPlayer?.state().currentTrack ?? null,
     getArtwork: (track) => getDisplayCoverUrl(track as ZydkaTrack),
@@ -700,6 +743,9 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
     },
     next: () => {
       playNextTrack();
+    },
+    seek: (seconds) => {
+      commitSeek(seconds);
     },
     getCurrentTime: () => window.ZydkaPlayer?.getCurrentTime() ?? 0,
     getDuration: () => window.ZydkaPlayer?.getDuration() ?? 0,
@@ -804,6 +850,7 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
         thumbImage.removeAttribute('src');
         thumbImage.hidden = true;
         thumbFallback.hidden = false;
+        refreshState();
       });
 
       thumb.append(thumbImage, thumbFallback);
@@ -869,7 +916,7 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
     const displayTrack = state.currentTrack ?? queue[currentIndex] ?? normalizeTrack(fallbackDisplayTrack);
     const position = window.ZydkaPlayer?.getCurrentTime() ?? state.position;
     const trackDuration = window.ZydkaPlayer?.getDuration() ?? state.duration;
-    const progressPercent = trackDuration > 0 ? Math.min(100, (position / trackDuration) * 100) : 0;
+    const timelineDisplay = getTimelineDisplay(position, trackDuration, pendingSeekSeconds);
     const displayIndex = queue.length > 0 ? Math.max(0, currentIndex) + 1 : 0;
     const volume = window.ZydkaPlayer?.getVolume() ?? state.volume;
     const muted = window.ZydkaPlayer?.isMuted() ?? state.muted;
@@ -935,10 +982,18 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
     toggleButton.classList.toggle('zydka-player-toggle-button--playing', state.isPlaying);
     setIconButton(toggleButton, state.isPlaying ? 'Pause' : 'Play', state.isPlaying ? 'pause' : 'play');
     statusValue.textContent = state.status;
-    currentTime.textContent = formatTime(position);
-    duration.textContent = formatTime(trackDuration);
-    progressFill.style.width = `${progressPercent}%`;
-    progress.setAttribute('aria-valuenow', String(Math.round(progressPercent)));
+    currentTime.textContent = timelineDisplay.currentLabel;
+    duration.textContent = timelineDisplay.durationLabel;
+    progress.disabled = !timelineDisplay.hasKnownDuration;
+    progress.max = timelineDisplay.hasKnownDuration ? String(trackDuration) : '0';
+
+    // Never overwrite the thumb under the user's finger.
+    if (!isUserSeeking) {
+      progress.value = String(timelineDisplay.displayPosition);
+    }
+
+    progress.style.setProperty('--zydka-progress-percent', `${timelineDisplay.percent}%`);
+    progress.setAttribute('aria-valuetext', timelineDisplay.valueText);
     volumeSlider.value = String(volume);
     volumeValue.textContent = `${Math.round(volume * 100)}%`;
     volumeControl.classList.toggle('zydka-player-volume--muted', muted);
@@ -955,10 +1010,12 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
     error.hidden = !state.error;
     mediaSession.refreshMetadata();
 
-    if (state.isPlaying) {
-      mediaSession.refreshPositionThrottled();
-    } else {
-      mediaSession.refreshPosition();
+    if (!isUserSeeking) {
+      if (state.isPlaying) {
+        mediaSession.refreshPositionThrottled();
+      } else {
+        mediaSession.refreshPosition();
+      }
     }
 
     handleEndedPlayback(state, queue, currentIndex);
@@ -974,6 +1031,7 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
     coverImage.removeAttribute('src');
     coverImage.hidden = true;
     coverFallback.hidden = false;
+    refreshState();
   });
 
   previousButton.addEventListener('click', () => {
@@ -1065,16 +1123,76 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
     refreshState();
   });
 
-  progress.addEventListener('click', (event) => {
-    const trackDuration = window.ZydkaPlayer?.getDuration() ?? 0;
+  // Timeline: preview while dragging ('input'), seek once on release ('change').
+  progress.addEventListener('input', () => {
+    if (!isKnownDuration(getSeekDuration())) return;
 
-    if (trackDuration <= 0) return;
-
-    const rect = progress.getBoundingClientRect();
-    const ratio = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
-
-    window.ZydkaPlayer?.seek(trackDuration * ratio);
+    clearSeekReleaseTimer();
+    isUserSeeking = true;
+    progress.classList.add('zydka-player-progress--dragging');
+    pendingSeekSeconds = clampSeekTime(Number(progress.value), getSeekDuration());
     refreshState();
+  });
+
+  progress.addEventListener('change', () => {
+    const value = Number(progress.value);
+
+    // Already committed by the pointerup/touchend fallback for this same gesture.
+    if (!isUserSeeking && pendingSeekSeconds !== null && Math.abs(pendingSeekSeconds - value) < 0.05) {
+      return;
+    }
+
+    commitSeek(value);
+  });
+
+  // Fallback if a mobile browser ends the gesture without firing 'change'.
+  const finishSeekGesture = (): void => {
+    window.setTimeout(() => {
+      if (isUserSeeking) {
+        commitSeek(Number(progress.value));
+      }
+    }, 0);
+  };
+
+  progress.addEventListener('pointerup', finishSeekGesture);
+  progress.addEventListener('touchend', finishSeekGesture);
+
+  // Gesture taken over by the browser (e.g. page scroll): drop the preview.
+  const cancelSeekGesture = (): void => {
+    if (!isUserSeeking) return;
+
+    isUserSeeking = false;
+    pendingSeekSeconds = null;
+    progress.classList.remove('zydka-player-progress--dragging');
+    refreshState();
+  };
+
+  progress.addEventListener('pointercancel', cancelSeekGesture);
+  progress.addEventListener('touchcancel', cancelSeekGesture);
+
+  // A native range moves by its 'step' on arrow keys; use musical steps instead.
+  progress.addEventListener('keydown', (event) => {
+    const target = getKeyboardSeekTarget(
+      event.key,
+      event.shiftKey,
+      window.ZydkaPlayer?.getCurrentTime() ?? 0,
+      getSeekDuration(),
+    );
+
+    if (target === null) return;
+
+    event.preventDefault();
+    commitSeek(target);
+  });
+
+  // Timers are throttled while the page is hidden: resync immediately when the user
+  // locks the phone (lock screen position) and when they come back to the page.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      refreshState();
+    }
+
+    mediaSession.refreshMetadata();
     mediaSession.refreshPosition();
   });
 

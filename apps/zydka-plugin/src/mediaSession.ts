@@ -25,14 +25,23 @@ interface MediaSessionLike {
   metadata: unknown;
   playbackState?: 'none' | 'paused' | 'playing';
   setActionHandler?: (
-    action: 'play' | 'pause' | 'previoustrack' | 'nexttrack',
-    handler: (() => void) | null,
+    action: MediaSessionAction,
+    handler: ((details?: MediaSessionActionDetailsLike) => void) | null,
   ) => void;
-  setPositionState?: (state: {
+  setPositionState?: (state?: {
     duration: number;
     playbackRate: number;
     position: number;
   }) => void;
+}
+
+// seekforward / seekbackward are deliberately NOT registered: on iOS they replace the
+// previous / next track buttons of the lock screen with ±10 s buttons.
+type MediaSessionAction = 'play' | 'pause' | 'previoustrack' | 'nexttrack' | 'seekto';
+
+interface MediaSessionActionDetailsLike {
+  seekTime?: number;
+  fastSeek?: boolean;
 }
 
 interface MediaSessionOptions {
@@ -42,6 +51,7 @@ interface MediaSessionOptions {
   pause: () => void;
   previous: () => void;
   next: () => void;
+  seek: (seconds: number) => void;
   getCurrentTime: () => number;
   getDuration: () => number;
   isPlaying: () => boolean;
@@ -156,16 +166,32 @@ export function setupMediaSession(options: MediaSessionOptions): MediaSessionCon
   const mediaMetadata = getMediaMetadataConstructor();
   let metadataSignature = '';
   let lastPositionUpdate = 0;
+  let hasPublishedPosition = false;
 
+  // Published on every call, including while the page is hidden / the screen is locked:
+  // that is exactly when the lock screen reads it.
   const refreshPosition = (): void => {
+    lastPositionUpdate = Date.now();
     setPlaybackState(mediaSession, options.isPlaying());
 
-    const positionState = getValidPositionState(options);
-
-    if (!positionState || typeof mediaSession.setPositionState !== 'function') {
+    if (typeof mediaSession.setPositionState !== 'function') {
       return;
     }
 
+    const positionState = getValidPositionState(options);
+
+    if (!positionState) {
+      // Duration unknown (next track loading): clear the previous track's position once
+      // instead of leaving a stale progress bar on the lock screen.
+      if (hasPublishedPosition) {
+        hasPublishedPosition = false;
+        safeRun(() => mediaSession.setPositionState?.());
+      }
+
+      return;
+    }
+
+    hasPublishedPosition = true;
     safeRun(() => mediaSession.setPositionState?.(positionState));
   };
 
@@ -205,17 +231,16 @@ export function setupMediaSession(options: MediaSessionOptions): MediaSessionCon
       return;
     }
 
-    lastPositionUpdate = now;
     refreshPosition();
   };
 
   const setHandler = (
-    action: 'play' | 'pause' | 'previoustrack' | 'nexttrack',
-    handler: () => void,
+    action: MediaSessionAction,
+    handler: (details: MediaSessionActionDetailsLike) => void,
   ): void => {
     safeRun(() => {
-      mediaSession.setActionHandler?.(action, () => {
-        safeRun(handler);
+      mediaSession.setActionHandler?.(action, (details) => {
+        safeRun(() => handler(details ?? {}));
         window.setTimeout(() => {
           refreshMetadata();
           refreshPosition();
@@ -224,10 +249,18 @@ export function setupMediaSession(options: MediaSessionOptions): MediaSessionCon
     });
   };
 
-  setHandler('play', options.play);
-  setHandler('pause', options.pause);
-  setHandler('previoustrack', options.previous);
-  setHandler('nexttrack', options.next);
+  setHandler('play', () => options.play());
+  setHandler('pause', () => options.pause());
+  setHandler('previoustrack', () => options.previous());
+  setHandler('nexttrack', () => options.next());
+  // Lock screen / notification scrubber: same seek path as the on-page timeline.
+  setHandler('seekto', (details) => {
+    const seekTime = details.seekTime;
+
+    if (typeof seekTime === 'number' && Number.isFinite(seekTime)) {
+      options.seek(seekTime);
+    }
+  });
 
   return {
     refreshMetadata,

@@ -215,6 +215,16 @@ Résultat :
 
 ## Changelog
 
+### 0.2.1 - correctif mobile et écran verrouillé
+
+- Timeline en `input range` natif : tap et glisser au doigt, aperçu pendant le glisser, un seul seek au relâchement.
+- Durée inconnue affichée `--:--`, timeline désactivée tant que la durée n'est pas connue.
+- Navigation clavier de la timeline : flèches ±5 s (Maj ±15 s), Début/Fin.
+- Écran verrouillé : `seekto` branché sur le même seek que la timeline ; `seekforward`/`seekbackward` volontairement non enregistrés (boutons précédent/suivant conservés sur iOS).
+- Position Media Session publiée aussi quand la page est masquée, effacée pendant le chargement du morceau suivant, resynchronisée au verrouillage/retour.
+- Pochette : retour à la cover intégrée au MP3 si l'URL de cover échoue.
+- Tests `node:test` (`pnpm --filter @zydka/zydka-plugin test`, Node ≥ 22.6).
+
 ### 0.2.0 - 28/06/2026
 
 - Consolidation de la base player dans main.

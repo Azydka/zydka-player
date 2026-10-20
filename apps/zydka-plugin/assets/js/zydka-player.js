@@ -3047,12 +3047,25 @@
     const mediaMetadata = getMediaMetadataConstructor();
     let metadataSignature = "";
     let lastPositionUpdate = 0;
+    let hasPublishedPosition = false;
     const refreshPosition = () => {
+      lastPositionUpdate = Date.now();
       setPlaybackState(mediaSession, options.isPlaying());
-      const positionState = getValidPositionState(options);
-      if (!positionState || typeof mediaSession.setPositionState !== "function") {
+      if (typeof mediaSession.setPositionState !== "function") {
         return;
       }
+      const positionState = getValidPositionState(options);
+      if (!positionState) {
+        if (hasPublishedPosition) {
+          hasPublishedPosition = false;
+          safeRun(() => {
+            var _a;
+            return (_a = mediaSession.setPositionState) == null ? void 0 : _a.call(mediaSession);
+          });
+        }
+        return;
+      }
+      hasPublishedPosition = true;
       safeRun(() => {
         var _a;
         return (_a = mediaSession.setPositionState) == null ? void 0 : _a.call(mediaSession, positionState);
@@ -3085,14 +3098,13 @@
       if (now - lastPositionUpdate < POSITION_UPDATE_INTERVAL_MS) {
         return;
       }
-      lastPositionUpdate = now;
       refreshPosition();
     };
     const setHandler = (action, handler) => {
       safeRun(() => {
         var _a;
-        (_a = mediaSession.setActionHandler) == null ? void 0 : _a.call(mediaSession, action, () => {
-          safeRun(handler);
+        (_a = mediaSession.setActionHandler) == null ? void 0 : _a.call(mediaSession, action, (details) => {
+          safeRun(() => handler(details != null ? details : {}));
           window.setTimeout(() => {
             refreshMetadata();
             refreshPosition();
@@ -3100,15 +3112,90 @@
         });
       });
     };
-    setHandler("play", options.play);
-    setHandler("pause", options.pause);
-    setHandler("previoustrack", options.previous);
-    setHandler("nexttrack", options.next);
+    setHandler("play", () => options.play());
+    setHandler("pause", () => options.pause());
+    setHandler("previoustrack", () => options.previous());
+    setHandler("nexttrack", () => options.next());
+    setHandler("seekto", (details) => {
+      const seekTime = details.seekTime;
+      if (typeof seekTime === "number" && Number.isFinite(seekTime)) {
+        options.seek(seekTime);
+      }
+    });
     return {
       refreshMetadata,
       refreshPosition,
       refreshPositionThrottled
     };
+  }
+
+  // src/timeline.ts
+  var KEYBOARD_SEEK_STEP_SECONDS = 5;
+  var KEYBOARD_SEEK_LARGE_STEP_SECONDS = 15;
+  function formatTime(seconds) {
+    if (!Number.isFinite(seconds) || seconds <= 0) return "0:00";
+    const totalSeconds = Math.floor(seconds);
+    const minutes = Math.floor(totalSeconds / 60);
+    const remainingSeconds = totalSeconds % 60;
+    return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
+  }
+  function isKnownDuration(duration) {
+    return Number.isFinite(duration) && duration > 0;
+  }
+  function formatDurationTime(duration) {
+    return isKnownDuration(duration) ? formatTime(duration) : "--:--";
+  }
+  function clampSeekTime(seconds, duration) {
+    if (!isKnownDuration(duration) || !Number.isFinite(seconds)) return null;
+    return Math.min(duration, Math.max(0, seconds));
+  }
+  function getTimelineDisplay(position, duration, pendingSeek = null) {
+    const hasKnownDuration = isKnownDuration(duration);
+    const safePosition = Number.isFinite(position) ? Math.max(0, position) : 0;
+    const audioPosition = hasKnownDuration ? Math.min(duration, safePosition) : safePosition;
+    const pending = pendingSeek === null ? null : clampSeekTime(pendingSeek, duration);
+    const displayPosition = pending != null ? pending : audioPosition;
+    const percent = hasKnownDuration ? Math.min(100, displayPosition / duration * 100) : 0;
+    const currentLabel = formatTime(displayPosition);
+    const durationLabel = formatDurationTime(duration);
+    return {
+      hasKnownDuration,
+      displayPosition,
+      percent,
+      currentLabel,
+      durationLabel,
+      valueText: `${currentLabel} / ${durationLabel}`
+    };
+  }
+  function getKeyboardSeekTarget(key, shiftKey, position, duration) {
+    if (!isKnownDuration(duration)) return null;
+    const step = shiftKey ? KEYBOARD_SEEK_LARGE_STEP_SECONDS : KEYBOARD_SEEK_STEP_SECONDS;
+    const current = Number.isFinite(position) ? position : 0;
+    switch (key) {
+      case "ArrowLeft":
+      case "ArrowDown":
+        return clampSeekTime(current - step, duration);
+      case "ArrowRight":
+      case "ArrowUp":
+        return clampSeekTime(current + step, duration);
+      case "Home":
+        return 0;
+      case "End":
+        return duration;
+      default:
+        return null;
+    }
+  }
+  function resolveCoverUrl(explicitCover, embeddedCover, failedUrls) {
+    const explicitUrl = explicitCover == null ? void 0 : explicitCover.trim();
+    if (explicitUrl && !failedUrls.has(explicitUrl)) return explicitUrl;
+    const embeddedUrl = embeddedCover == null ? void 0 : embeddedCover.trim();
+    if (embeddedUrl && !failedUrls.has(embeddedUrl)) return embeddedUrl;
+    return null;
+  }
+  function needsEmbeddedCover(explicitCover, failedUrls) {
+    const explicitUrl = explicitCover == null ? void 0 : explicitCover.trim();
+    return !explicitUrl || failedUrls.has(explicitUrl);
   }
 
   // src/index.ts
@@ -3182,20 +3269,9 @@
     const label = (track == null ? void 0 : track.title) || (track == null ? void 0 : track.artist) || "Z";
     return String(label).trim().charAt(0).toUpperCase() || "Z";
   }
-  function hasExplicitCover(track) {
-    var _a;
-    return Boolean((_a = track == null ? void 0 : track.cover) == null ? void 0 : _a.trim());
-  }
   function getBuyLabel(track) {
     var _a;
     return ((_a = track == null ? void 0 : track.buyLabel) == null ? void 0 : _a.trim()) || "Voir le projet";
-  }
-  function formatTime(seconds) {
-    if (!Number.isFinite(seconds) || seconds <= 0) return "0:00";
-    const totalSeconds = Math.floor(seconds);
-    const minutes = Math.floor(totalSeconds / 60);
-    const remainingSeconds = totalSeconds % 60;
-    return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
   }
   var controlIcons = {
     shuffle: `
@@ -3351,20 +3427,19 @@
     const currentTime = document.createElement("span");
     currentTime.className = "zydka-player-time";
     currentTime.textContent = "0:00";
-    const progress = document.createElement("button");
+    const progress = document.createElement("input");
     progress.className = "zydka-player-progress";
-    progress.type = "button";
-    progress.setAttribute("aria-label", "Seek");
-    progress.setAttribute("aria-valuemin", "0");
-    progress.setAttribute("aria-valuemax", "100");
-    progress.setAttribute("aria-valuenow", "0");
-    progress.setAttribute("role", "slider");
-    const progressFill = document.createElement("span");
-    progressFill.className = "zydka-player-progress-fill";
-    progress.append(progressFill);
+    progress.type = "range";
+    progress.min = "0";
+    progress.max = "0";
+    progress.step = "any";
+    progress.value = "0";
+    progress.disabled = true;
+    progress.setAttribute("aria-label", "Position dans le morceau");
+    progress.setAttribute("aria-valuetext", "0:00 / --:--");
     const duration = document.createElement("span");
     duration.className = "zydka-player-time";
-    duration.textContent = "0:00";
+    duration.textContent = "--:--";
     timeline.append(currentTime, progress, duration);
     const volumeControl = document.createElement("div");
     volumeControl.className = "zydka-player-volume";
@@ -3446,14 +3521,15 @@
     let shuffleHistory = [];
     let handledEndedSignature = "";
     let shareFeedbackTimer;
+    let isUserSeeking = false;
+    let pendingSeekSeconds = null;
+    let seekReleaseTimer;
     const getDisplayCoverUrl = (track) => {
-      var _a, _b;
       if (!track) return null;
-      if (hasExplicitCover(track)) return (_a = track.cover) != null ? _a : null;
-      return (_b = embeddedCoverUrls.get(track.audioUrl)) != null ? _b : null;
+      return resolveCoverUrl(track.cover, embeddedCoverUrls.get(track.audioUrl), failedCoverUrls);
     };
     const requestEmbeddedCover = (track) => {
-      if (!track || hasExplicitCover(track) || requestedEmbeddedCoverUrls.has(track.audioUrl)) {
+      if (!track || !needsEmbeddedCover(track.cover, failedCoverUrls) || requestedEmbeddedCoverUrls.has(track.audioUrl)) {
         return;
       }
       requestedEmbeddedCoverUrls.add(track.audioUrl);
@@ -3612,6 +3688,38 @@
         playAtIndex(0, { resetShuffleHistory: false });
       }
     };
+    const getSeekDuration = () => {
+      var _a, _b;
+      return (_b = (_a = window.ZydkaPlayer) == null ? void 0 : _a.getDuration()) != null ? _b : 0;
+    };
+    const clearSeekReleaseTimer = () => {
+      if (seekReleaseTimer !== void 0) {
+        window.clearTimeout(seekReleaseTimer);
+        seekReleaseTimer = void 0;
+      }
+    };
+    const commitSeek = (seconds) => {
+      var _a;
+      const target = clampSeekTime(seconds, getSeekDuration());
+      isUserSeeking = false;
+      progress.classList.remove("zydka-player-progress--dragging");
+      clearSeekReleaseTimer();
+      if (target === null) {
+        pendingSeekSeconds = null;
+        refreshState();
+        return;
+      }
+      pendingSeekSeconds = target;
+      (_a = window.ZydkaPlayer) == null ? void 0 : _a.seek(target);
+      refreshState();
+      mediaSession.refreshPosition();
+      seekReleaseTimer = window.setTimeout(() => {
+        seekReleaseTimer = void 0;
+        if (isUserSeeking) return;
+        pendingSeekSeconds = null;
+        refreshState();
+      }, 300);
+    };
     const mediaSession = setupMediaSession({
       getCurrentTrack: () => {
         var _a, _b;
@@ -3628,6 +3736,9 @@
       },
       next: () => {
         playNextTrack();
+      },
+      seek: (seconds) => {
+        commitSeek(seconds);
       },
       getCurrentTime: () => {
         var _a, _b;
@@ -3711,6 +3822,7 @@
           thumbImage.removeAttribute("src");
           thumbImage.hidden = true;
           thumbFallback.hidden = false;
+          refreshState();
         });
         thumb.append(thumbImage, thumbFallback);
         const meta = document.createElement("span");
@@ -3763,7 +3875,7 @@
       const displayTrack = (_g = (_f = state.currentTrack) != null ? _f : queue[currentIndex]) != null ? _g : normalizeTrack(fallbackDisplayTrack);
       const position = (_i = (_h = window.ZydkaPlayer) == null ? void 0 : _h.getCurrentTime()) != null ? _i : state.position;
       const trackDuration = (_k = (_j = window.ZydkaPlayer) == null ? void 0 : _j.getDuration()) != null ? _k : state.duration;
-      const progressPercent = trackDuration > 0 ? Math.min(100, position / trackDuration * 100) : 0;
+      const timelineDisplay = getTimelineDisplay(position, trackDuration, pendingSeekSeconds);
       const displayIndex = queue.length > 0 ? Math.max(0, currentIndex) + 1 : 0;
       const volume = (_m = (_l = window.ZydkaPlayer) == null ? void 0 : _l.getVolume()) != null ? _m : state.volume;
       const muted = (_o = (_n = window.ZydkaPlayer) == null ? void 0 : _n.isMuted()) != null ? _o : state.muted;
@@ -3822,10 +3934,15 @@
       toggleButton.classList.toggle("zydka-player-toggle-button--playing", state.isPlaying);
       setIconButton(toggleButton, state.isPlaying ? "Pause" : "Play", state.isPlaying ? "pause" : "play");
       statusValue.textContent = state.status;
-      currentTime.textContent = formatTime(position);
-      duration.textContent = formatTime(trackDuration);
-      progressFill.style.width = `${progressPercent}%`;
-      progress.setAttribute("aria-valuenow", String(Math.round(progressPercent)));
+      currentTime.textContent = timelineDisplay.currentLabel;
+      duration.textContent = timelineDisplay.durationLabel;
+      progress.disabled = !timelineDisplay.hasKnownDuration;
+      progress.max = timelineDisplay.hasKnownDuration ? String(trackDuration) : "0";
+      if (!isUserSeeking) {
+        progress.value = String(timelineDisplay.displayPosition);
+      }
+      progress.style.setProperty("--zydka-progress-percent", `${timelineDisplay.percent}%`);
+      progress.setAttribute("aria-valuetext", timelineDisplay.valueText);
       volumeSlider.value = String(volume);
       volumeValue.textContent = `${Math.round(volume * 100)}%`;
       volumeControl.classList.toggle("zydka-player-volume--muted", muted);
@@ -3839,10 +3956,12 @@
       error.textContent = (_s = state.error) != null ? _s : "";
       error.hidden = !state.error;
       mediaSession.refreshMetadata();
-      if (state.isPlaying) {
-        mediaSession.refreshPositionThrottled();
-      } else {
-        mediaSession.refreshPosition();
+      if (!isUserSeeking) {
+        if (state.isPlaying) {
+          mediaSession.refreshPositionThrottled();
+        } else {
+          mediaSession.refreshPosition();
+        }
       }
       handleEndedPlayback(state, queue, currentIndex);
     };
@@ -3854,6 +3973,7 @@
       coverImage.removeAttribute("src");
       coverImage.hidden = true;
       coverFallback.hidden = false;
+      refreshState();
     });
     previousButton.addEventListener("click", () => {
       playPreviousTrack();
@@ -3927,14 +4047,56 @@
       }
       refreshState();
     });
-    progress.addEventListener("click", (event) => {
-      var _a, _b, _c;
-      const trackDuration = (_b = (_a = window.ZydkaPlayer) == null ? void 0 : _a.getDuration()) != null ? _b : 0;
-      if (trackDuration <= 0) return;
-      const rect = progress.getBoundingClientRect();
-      const ratio = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
-      (_c = window.ZydkaPlayer) == null ? void 0 : _c.seek(trackDuration * ratio);
+    progress.addEventListener("input", () => {
+      if (!isKnownDuration(getSeekDuration())) return;
+      clearSeekReleaseTimer();
+      isUserSeeking = true;
+      progress.classList.add("zydka-player-progress--dragging");
+      pendingSeekSeconds = clampSeekTime(Number(progress.value), getSeekDuration());
       refreshState();
+    });
+    progress.addEventListener("change", () => {
+      const value = Number(progress.value);
+      if (!isUserSeeking && pendingSeekSeconds !== null && Math.abs(pendingSeekSeconds - value) < 0.05) {
+        return;
+      }
+      commitSeek(value);
+    });
+    const finishSeekGesture = () => {
+      window.setTimeout(() => {
+        if (isUserSeeking) {
+          commitSeek(Number(progress.value));
+        }
+      }, 0);
+    };
+    progress.addEventListener("pointerup", finishSeekGesture);
+    progress.addEventListener("touchend", finishSeekGesture);
+    const cancelSeekGesture = () => {
+      if (!isUserSeeking) return;
+      isUserSeeking = false;
+      pendingSeekSeconds = null;
+      progress.classList.remove("zydka-player-progress--dragging");
+      refreshState();
+    };
+    progress.addEventListener("pointercancel", cancelSeekGesture);
+    progress.addEventListener("touchcancel", cancelSeekGesture);
+    progress.addEventListener("keydown", (event) => {
+      var _a, _b;
+      const target = getKeyboardSeekTarget(
+        event.key,
+        event.shiftKey,
+        (_b = (_a = window.ZydkaPlayer) == null ? void 0 : _a.getCurrentTime()) != null ? _b : 0,
+        getSeekDuration()
+      );
+      if (target === null) return;
+      event.preventDefault();
+      commitSeek(target);
+    });
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        refreshState();
+      }
+      mediaSession.refreshMetadata();
       mediaSession.refreshPosition();
     });
     refreshState();

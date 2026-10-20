@@ -430,28 +430,91 @@
 }
 
 .zydka-player-progress {
-  position: relative;
+  --zydka-progress-percent: 0%;
   display: block;
   width: 100%;
-  height: 18px;
+  min-width: 0;
+  /* 32px touch target around a 10px track. */
+  height: 32px;
+  margin: 0;
   padding: 0;
-  overflow: hidden;
+  border: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  cursor: pointer;
+  /* Horizontal drags move the thumb instead of scrolling the page. */
+  touch-action: pan-y;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.zydka-player-progress::-webkit-slider-runnable-track {
+  height: 10px;
   border: 1px solid rgba(23, 23, 23, 0.06);
   border-radius: 999px;
-  background: #e7dfd5;
-  cursor: pointer;
+  background: linear-gradient(
+    90deg,
+    var(--zydka-red-dark) 0%,
+    var(--zydka-red) var(--zydka-progress-percent),
+    #e7dfd5 var(--zydka-progress-percent),
+    #e7dfd5 100%
+  );
+  /* Paint the gradient under the border too, otherwise it repeats as a red sliver at the end. */
+  background-origin: border-box;
+  background-repeat: no-repeat;
   box-shadow: inset 0 2px 6px rgba(31, 24, 16, 0.08);
 }
 
-.zydka-player-progress-fill {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 0%;
-  border-radius: inherit;
-  background:
-    linear-gradient(90deg, var(--zydka-red-dark), var(--zydka-red)),
-    var(--zydka-red);
-  box-shadow: 0 0 18px rgba(189, 23, 30, 0.26);
+.zydka-player-progress::-webkit-slider-thumb {
+  width: 20px;
+  height: 20px;
+  margin-top: -6px;
+  border: 3px solid #ffffff;
+  border-radius: 50%;
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--zydka-red);
+  box-shadow:
+    0 5px 14px rgba(31, 24, 16, 0.16),
+    0 0 0 1px rgba(147, 17, 22, 0.18);
+}
+
+.zydka-player-progress::-moz-range-track {
+  height: 10px;
+  border: 1px solid rgba(23, 23, 23, 0.06);
+  border-radius: 999px;
+  background: #e7dfd5;
+  box-shadow: inset 0 2px 6px rgba(31, 24, 16, 0.08);
+}
+
+.zydka-player-progress::-moz-range-progress {
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--zydka-red-dark), var(--zydka-red));
+}
+
+.zydka-player-progress::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: 3px solid #ffffff;
+  border-radius: 50%;
+  background: var(--zydka-red);
+  box-shadow:
+    0 5px 14px rgba(31, 24, 16, 0.16),
+    0 0 0 1px rgba(147, 17, 22, 0.18);
+}
+
+.zydka-player-progress--dragging::-webkit-slider-thumb {
+  transform: scale(1.15);
+}
+
+.zydka-player-progress--dragging::-moz-range-thumb {
+  transform: scale(1.15);
+}
+
+.zydka-player-progress:disabled {
+  cursor: default;
+  opacity: 0.55;
 }
 
 .zydka-player-volume {
@@ -570,6 +633,13 @@
 }
 
 .zydka-player-share-feedback[hidden] {
+  display: none;
+}
+
+/* display: block on the cover images overrides [hidden]: without this a missing or
+   failed cover shows the browser's broken-image icon on top of the letter fallback. */
+.zydka-player-cover-image[hidden],
+.zydka-player-queue__cover-image[hidden] {
   display: none;
 }
 

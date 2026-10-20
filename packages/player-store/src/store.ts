@@ -177,6 +177,27 @@ export const usePlayerStore = createStore<IPlayerState>((set, get) => ({
     return true;
   },
 
+  // Point the queue at a track without starting it (autoplay is blocked anyway).
+  select: (index: number) => {
+    const { queue, currentIndex } = get();
+
+    if (!queue[index]) return false;
+    if (index === currentIndex) return true;
+
+    audioEngine.unload();
+    set({
+      currentTrack: null,
+      currentIndex: index,
+      status: "idle",
+      isPlaying: false,
+      position: 0,
+      duration: 0,
+      error: null,
+    });
+
+    return true;
+  },
+
   next: () => {
     const { currentIndex, queue, playAt } = get();
 

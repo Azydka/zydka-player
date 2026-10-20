@@ -107,6 +107,14 @@ export class AudioEngine {
     this.setStatus("ready");
   }
 
+  /** Release the current track without touching listeners or volume. */
+  unload(): void {
+    this.teardownHowl();
+    this.currentTrack = null;
+    this.errorMessage = null;
+    this.setStatus("idle");
+  }
+
   getCurrentTime(): number {
     return this.safeSeek();
   }

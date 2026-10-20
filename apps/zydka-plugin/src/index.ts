@@ -1,6 +1,7 @@
 import { WordPressBridge } from '@zydka/wordpress-bridge';
 import { getEmbeddedCoverUrl, revokeEmbeddedCoverCache } from './metadataCover';
 import { setupMediaSession } from './mediaSession';
+import { findTrackIndex, getShareText, getTrackHash, parseTrackHash } from './sharedTrack';
 import {
   cycleRepeatMode,
   getNextTrack,
@@ -70,6 +71,7 @@ interface ZydkaPlayerAPI {
   getQueue: () => ZydkaTrack[];
   getCurrentIndex: () => number;
   playAt: (index: number) => boolean;
+  select: (index: number) => boolean;
   next: () => boolean;
   previous: () => boolean;
   setVolume: (value: number) => number;
@@ -587,9 +589,10 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
 
   const getShareUrl = (track: ZydkaTrack | null | undefined): string => {
     const url = new URL(window.location.href);
+    const hash = getTrackHash(track?.id);
 
-    if (track?.id !== undefined && track.id !== null && String(track.id).trim()) {
-      url.hash = `track-${encodeURIComponent(String(track.id).trim())}`;
+    if (hash) {
+      url.hash = hash;
     }
 
     return url.toString();
@@ -616,10 +619,9 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
     const currentIndex = window.ZydkaPlayer?.getCurrentIndex() ?? state?.currentIndex ?? -1;
     const track = state?.currentTrack ?? queue[currentIndex] ?? normalizeTrack(fallbackDisplayTrack);
     const title = renderText(track?.title || 'Zydka Player');
-    const artist = renderText(track?.artist || '').trim();
-    const text = artist ? `${artist} - ${title}` : 'Écouter sur Louis94';
+    const text = getShareText(track?.title, track?.artist);
     const url = getShareUrl(track);
-    const shareData = { title, text, url };
+    const shareData = text ? { title, text, url } : { title, url };
 
     try {
       if (typeof navigator.share === 'function') {
@@ -1161,7 +1163,36 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
     mediaSession.refreshPosition();
   });
 
+  let sharedHighlightTimer: number | undefined;
+
+  // Shared links (#track-<id>) select the track without starting it: browsers block
+  // autoplay, so the visitor gets the player in view with the track ready to play.
+  const openSharedTrack = (): void => {
+    const queue = window.ZydkaPlayer?.getQueue() ?? [];
+    const index = findTrackIndex(queue, parseTrackHash(window.location.hash));
+
+    if (index < 0) return;
+
+    if (window.ZydkaPlayer?.getCurrentIndex() !== index) {
+      shuffleHistory = [];
+      shufflePlayed = [];
+      window.ZydkaPlayer?.select(index);
+      refreshState();
+    }
+
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    root.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
+    root.classList.add('zydka-player-root--shared');
+    window.clearTimeout(sharedHighlightTimer);
+    sharedHighlightTimer = window.setTimeout(() => {
+      root.classList.remove('zydka-player-root--shared');
+    }, 2400);
+  };
+
+  window.addEventListener('hashchange', openSharedTrack);
+
   refreshState();
+  openSharedTrack();
   window.setInterval(refreshState, 250);
 }
 
@@ -1189,6 +1220,7 @@ function bootstrap(): void {
     getQueue: () => WordPressBridge.getQueue(),
     getCurrentIndex: () => WordPressBridge.getCurrentIndex(),
     playAt: (index: number) => WordPressBridge.playAt(index),
+    select: (index: number) => WordPressBridge.select(index),
     next: () => WordPressBridge.next(),
     previous: () => WordPressBridge.previous(),
     setVolume: (value: number) => WordPressBridge.setVolume(value),

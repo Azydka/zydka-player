@@ -3316,12 +3316,7 @@
   }
 
   // src/index.ts
-  var fallbackTrack = {
-    id: "demo-track",
-    title: "Demo Track",
-    artist: "Atelier Zydka",
-    src: "https://www.louis94.com/wp-content/uploads/2026/06/04.-New-York-Shit-feat.-Swizz-Beatz.mp3"
-  };
+  var UNAVAILABLE_TRACK_MESSAGE = "Ce morceau est indisponible pour le moment.";
   function normalizeTrack(track) {
     var _a, _b, _c;
     const audioUrl = (_a = track.audioUrl) != null ? _a : track.src;
@@ -3355,19 +3350,20 @@
   }
   function readTrackFromRoot(root) {
     return {
-      id: root.dataset.trackId || fallbackTrack.id,
-      title: root.dataset.title || fallbackTrack.title,
-      artist: root.dataset.artist || fallbackTrack.artist,
-      src: root.dataset.src || fallbackTrack.src,
-      cover: root.dataset.cover || fallbackTrack.cover,
+      id: root.dataset.trackId || "track-1",
+      title: root.dataset.title,
+      artist: root.dataset.artist,
+      src: root.dataset.src,
+      cover: root.dataset.cover,
       album: root.dataset.album,
       buyUrl: root.dataset.buyUrl,
       buyLabel: root.dataset.buyLabel
     };
   }
   function readQueueFromRoot(root, fallbackSingleTrack) {
+    const singleTrackQueue = fallbackSingleTrack.src ? [fallbackSingleTrack] : [];
     if (!root.dataset.tracks) {
-      return [fallbackSingleTrack];
+      return singleTrackQueue;
     }
     try {
       const parsedTracks = JSON.parse(root.dataset.tracks);
@@ -3377,7 +3373,7 @@
     } catch (error) {
       console.error("[Zydka Player] Cannot parse playlist tracks.", error);
     }
-    return [fallbackSingleTrack];
+    return singleTrackQueue;
   }
   function renderText(value) {
     return String(value != null ? value : "");
@@ -3499,14 +3495,8 @@
     headerAside.className = "zydka-player-header-aside";
     const trackCounter = document.createElement("p");
     trackCounter.className = "zydka-player-counter";
-    trackCounter.textContent = "Track 1 / 1";
+    trackCounter.textContent = "1 / 1";
     headerAside.append(cover, trackCounter);
-    const status = document.createElement("p");
-    status.className = "zydka-player-status";
-    status.append("Status: ");
-    const statusValue = document.createElement("span");
-    statusValue.textContent = "idle";
-    status.append(statusValue);
     textBlock.append(eyebrow, title, artist, buyLink);
     header.append(textBlock, headerAside);
     const actions = document.createElement("div");
@@ -3519,15 +3509,15 @@
     const previousButton = document.createElement("button");
     previousButton.className = "zydka-player-button zydka-player-icon-button zydka-player-nav-button";
     previousButton.type = "button";
-    setIconButton(previousButton, "Previous", "previous");
+    setIconButton(previousButton, "Morceau pr\xE9c\xE9dent", "previous");
     const toggleButton = document.createElement("button");
     toggleButton.className = "zydka-player-button zydka-player-icon-button zydka-player-toggle-button";
     toggleButton.type = "button";
-    setIconButton(toggleButton, "Play", "play");
+    setIconButton(toggleButton, "Lecture", "play");
     const nextButton = document.createElement("button");
     nextButton.className = "zydka-player-button zydka-player-icon-button zydka-player-nav-button";
     nextButton.type = "button";
-    setIconButton(nextButton, "Next", "next");
+    setIconButton(nextButton, "Morceau suivant", "next");
     const repeatButton = document.createElement("button");
     repeatButton.className = "zydka-player-button zydka-player-icon-button zydka-player-mode-button zydka-player-repeat-button";
     repeatButton.type = "button";
@@ -3536,7 +3526,7 @@
     const queueButton = document.createElement("button");
     queueButton.className = "zydka-player-button zydka-player-queue-button";
     queueButton.type = "button";
-    queueButton.textContent = "A suivre";
+    queueButton.textContent = "\xC0 suivre";
     queueButton.setAttribute("aria-expanded", "false");
     queueButton.hidden = true;
     actions.append(shuffleButton, previousButton, toggleButton, nextButton, repeatButton, queueButton);
@@ -3564,7 +3554,7 @@
     const muteButton = document.createElement("button");
     muteButton.className = "zydka-player-button zydka-player-icon-button zydka-player-mute-button";
     muteButton.type = "button";
-    setIconButton(muteButton, "Mute", "volume");
+    setIconButton(muteButton, "Couper le son", "volume");
     const volumeSlider = document.createElement("input");
     volumeSlider.className = "zydka-player-volume-slider";
     volumeSlider.type = "range";
@@ -3604,10 +3594,10 @@
     const queuePanelTitle = document.createElement("h3");
     queuePanelTitle.className = "zydka-player-queue__title";
     queuePanelTitle.id = "zydka-player-queue-title";
-    queuePanelTitle.textContent = "A suivre";
+    queuePanelTitle.textContent = "\xC0 suivre";
     const queueSubtitle = document.createElement("p");
     queueSubtitle.className = "zydka-player-queue__subtitle";
-    queueSubtitle.textContent = "File d'ecoute";
+    queueSubtitle.textContent = "File d'\xE9coute";
     const closeQueueButton = document.createElement("button");
     closeQueueButton.className = "zydka-player-queue__close";
     closeQueueButton.type = "button";
@@ -3624,7 +3614,8 @@
     const error = document.createElement("p");
     error.className = "zydka-player-error";
     error.hidden = true;
-    footer.append(status, error);
+    footer.hidden = true;
+    footer.append(error);
     card.append(header, actions, timeline, volumeControl, shareControl, footer);
     root.append(card, queueOverlay);
     const failedCoverUrls = /* @__PURE__ */ new Set();
@@ -3632,6 +3623,7 @@
     const requestedEmbeddedCoverUrls = /* @__PURE__ */ new Set();
     let refreshState = () => void 0;
     let renderedQueueSignature = "";
+    let loggedError = "";
     let hasMultipleQueuedTracks = false;
     let isQueueOpen = false;
     let repeatMode = "off";
@@ -3873,7 +3865,7 @@
         const listItem = document.createElement("li");
         const item = document.createElement("button");
         const isActive = index === currentIndex;
-        const displayTitle = renderText(track.title || "Track " + String(index + 1));
+        const displayTitle = renderText(track.title || "Morceau " + String(index + 1));
         item.className = isActive ? "zydka-player-queue__item zydka-player-queue__item--active" : "zydka-player-queue__item";
         item.type = "button";
         item.setAttribute("aria-label", `Lire ${displayTitle}`);
@@ -3971,7 +3963,7 @@
       }
       root.classList.toggle("zydka-player-root--has-queue", hasQueue);
       actions.classList.toggle("zydka-player-actions--has-queue", hasQueue);
-      queueButton.textContent = hasQueue ? `A suivre (${queue.length})` : "A suivre";
+      queueButton.textContent = hasQueue ? `\xC0 suivre (${queue.length})` : "\xC0 suivre";
       card.className = `zydka-player-card zydka-player-state-${state.status}`;
       title.textContent = renderText((_p = displayTrack == null ? void 0 : displayTrack.title) != null ? _p : fallbackDisplayTrack.title);
       artist.textContent = renderText((_q = displayTrack == null ? void 0 : displayTrack.artist) != null ? _q : fallbackDisplayTrack.artist);
@@ -3998,7 +3990,8 @@
         coverImage.hidden = true;
         coverFallback.hidden = false;
       }
-      trackCounter.textContent = `Track ${displayIndex} / ${queue.length}`;
+      trackCounter.textContent = `${displayIndex} / ${queue.length}`;
+      trackCounter.setAttribute("aria-label", `Morceau ${displayIndex} sur ${queue.length}`);
       shuffleButton.classList.toggle("zydka-player-mode-button--active", shuffleEnabled);
       shuffleButton.setAttribute("aria-pressed", String(shuffleEnabled));
       setIconButton(
@@ -4015,8 +4008,7 @@
       previousButton.disabled = getPreviousIndex(navigation, shuffleHistory) === null;
       nextButton.disabled = !canGoNext;
       toggleButton.classList.toggle("zydka-player-toggle-button--playing", state.isPlaying);
-      setIconButton(toggleButton, state.isPlaying ? "Pause" : "Play", state.isPlaying ? "pause" : "play");
-      statusValue.textContent = state.status;
+      setIconButton(toggleButton, state.isPlaying ? "Pause" : "Lecture", state.isPlaying ? "pause" : "play");
       currentTime.textContent = timelineDisplay.currentLabel;
       duration.textContent = timelineDisplay.durationLabel;
       progress.disabled = !timelineDisplay.hasKnownDuration;
@@ -4030,14 +4022,19 @@
       volumeValue.textContent = `${Math.round(volume * 100)}%`;
       volumeControl.classList.toggle("zydka-player-volume--muted", muted);
       muteButton.classList.toggle("zydka-player-mute-button--muted", muted);
-      setIconButton(muteButton, muted ? "Unmute" : "Mute", muted ? "muted" : "volume");
+      setIconButton(muteButton, muted ? "R\xE9tablir le son" : "Couper le son", muted ? "muted" : "volume");
       const queueSignature = getQueueSignature(queue, currentIndex);
       if (queueSignature !== renderedQueueSignature) {
         renderQueueItems(queue, currentIndex);
         renderedQueueSignature = queueSignature;
       }
-      error.textContent = (_s = state.error) != null ? _s : "";
+      if (state.error && state.error !== loggedError) {
+        console.error("[Zydka Player]", state.error);
+      }
+      loggedError = (_s = state.error) != null ? _s : "";
+      error.textContent = state.error ? UNAVAILABLE_TRACK_MESSAGE : "";
       error.hidden = !state.error;
+      footer.hidden = !state.error;
       mediaSession.refreshMetadata();
       if (!isUserSeeking) {
         if (state.isPlaying) {
@@ -4210,7 +4207,6 @@
     window.setInterval(refreshState, 250);
   }
   function bootstrap() {
-    var _a;
     const root = document.getElementById("zydka-player-root");
     if (!root) return;
     const shortcodeTrack = readTrackFromRoot(root);
@@ -4245,7 +4241,12 @@
     };
     const shortcodeQueue = readQueueFromRoot(root, shortcodeTrack);
     window.ZydkaPlayer.setQueue(shortcodeQueue);
-    renderTestPlayer(root, (_a = shortcodeQueue[0]) != null ? _a : shortcodeTrack);
+    const firstTrack = window.ZydkaPlayer.getQueue()[0];
+    if (!firstTrack) {
+      console.warn('[Zydka Player] No playable track: give each track an audio URL ("src").');
+      return;
+    }
+    renderTestPlayer(root, firstTrack);
     console.log("[Zydka Player] Bridge initialized - window.ZydkaPlayer ready.");
   }
   document.addEventListener("DOMContentLoaded", bootstrap);

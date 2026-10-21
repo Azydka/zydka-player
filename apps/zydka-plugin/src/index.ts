@@ -83,12 +83,7 @@ interface ZydkaPlayerAPI {
   state: () => ZydkaPlayerState;
 }
 
-const fallbackTrack: ZydkaTrackInput = {
-  id: 'demo-track',
-  title: 'Demo Track',
-  artist: 'Atelier Zydka',
-  src: 'https://www.louis94.com/wp-content/uploads/2026/06/04.-New-York-Shit-feat.-Swizz-Beatz.mp3',
-};
+const UNAVAILABLE_TRACK_MESSAGE = 'Ce morceau est indisponible pour le moment.';
 
 declare global {
   interface Window {
@@ -134,11 +129,11 @@ function normalizeQueue(tracks: ZydkaTrackInput[]): ZydkaTrack[] {
 
 function readTrackFromRoot(root: HTMLElement): ZydkaTrackInput {
   return {
-    id: root.dataset.trackId || fallbackTrack.id,
-    title: root.dataset.title || fallbackTrack.title,
-    artist: root.dataset.artist || fallbackTrack.artist,
-    src: root.dataset.src || fallbackTrack.src,
-    cover: root.dataset.cover || fallbackTrack.cover,
+    id: root.dataset.trackId || 'track-1',
+    title: root.dataset.title,
+    artist: root.dataset.artist,
+    src: root.dataset.src,
+    cover: root.dataset.cover,
     album: root.dataset.album,
     buyUrl: root.dataset.buyUrl,
     buyLabel: root.dataset.buyLabel,
@@ -146,8 +141,10 @@ function readTrackFromRoot(root: HTMLElement): ZydkaTrackInput {
 }
 
 function readQueueFromRoot(root: HTMLElement, fallbackSingleTrack: ZydkaTrackInput): ZydkaTrackInput[] {
+  const singleTrackQueue = fallbackSingleTrack.src ? [fallbackSingleTrack] : [];
+
   if (!root.dataset.tracks) {
-    return [fallbackSingleTrack];
+    return singleTrackQueue;
   }
 
   try {
@@ -160,7 +157,7 @@ function readQueueFromRoot(root: HTMLElement, fallbackSingleTrack: ZydkaTrackInp
     console.error('[Zydka Player] Cannot parse playlist tracks.', error);
   }
 
-  return [fallbackSingleTrack];
+  return singleTrackQueue;
 }
 
 function renderText(value: string | number | undefined): string {
@@ -303,17 +300,9 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
 
   const trackCounter = document.createElement('p');
   trackCounter.className = 'zydka-player-counter';
-  trackCounter.textContent = 'Track 1 / 1';
+  trackCounter.textContent = '1 / 1';
 
   headerAside.append(cover, trackCounter);
-
-  const status = document.createElement('p');
-  status.className = 'zydka-player-status';
-  status.append('Status: ');
-
-  const statusValue = document.createElement('span');
-  statusValue.textContent = 'idle';
-  status.append(statusValue);
 
   textBlock.append(eyebrow, title, artist, buyLink);
   header.append(textBlock, headerAside);
@@ -330,17 +319,17 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
   const previousButton = document.createElement('button');
   previousButton.className = 'zydka-player-button zydka-player-icon-button zydka-player-nav-button';
   previousButton.type = 'button';
-  setIconButton(previousButton, 'Previous', 'previous');
+  setIconButton(previousButton, 'Morceau précédent', 'previous');
 
   const toggleButton = document.createElement('button');
   toggleButton.className = 'zydka-player-button zydka-player-icon-button zydka-player-toggle-button';
   toggleButton.type = 'button';
-  setIconButton(toggleButton, 'Play', 'play');
+  setIconButton(toggleButton, 'Lecture', 'play');
 
   const nextButton = document.createElement('button');
   nextButton.className = 'zydka-player-button zydka-player-icon-button zydka-player-nav-button';
   nextButton.type = 'button';
-  setIconButton(nextButton, 'Next', 'next');
+  setIconButton(nextButton, 'Morceau suivant', 'next');
 
   const repeatButton = document.createElement('button');
   repeatButton.className = 'zydka-player-button zydka-player-icon-button zydka-player-mode-button zydka-player-repeat-button';
@@ -351,7 +340,7 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
   const queueButton = document.createElement('button');
   queueButton.className = 'zydka-player-button zydka-player-queue-button';
   queueButton.type = 'button';
-  queueButton.textContent = 'A suivre';
+  queueButton.textContent = 'À suivre';
   queueButton.setAttribute('aria-expanded', 'false');
   queueButton.hidden = true;
 
@@ -388,7 +377,7 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
   const muteButton = document.createElement('button');
   muteButton.className = 'zydka-player-button zydka-player-icon-button zydka-player-mute-button';
   muteButton.type = 'button';
-  setIconButton(muteButton, 'Mute', 'volume');
+  setIconButton(muteButton, 'Couper le son', 'volume');
 
   const volumeSlider = document.createElement('input');
   volumeSlider.className = 'zydka-player-volume-slider';
@@ -440,11 +429,11 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
   const queuePanelTitle = document.createElement('h3');
   queuePanelTitle.className = 'zydka-player-queue__title';
   queuePanelTitle.id = 'zydka-player-queue-title';
-  queuePanelTitle.textContent = 'A suivre';
+  queuePanelTitle.textContent = 'À suivre';
 
   const queueSubtitle = document.createElement('p');
   queueSubtitle.className = 'zydka-player-queue__subtitle';
-  queueSubtitle.textContent = "File d'ecoute";
+  queueSubtitle.textContent = "File d'écoute";
 
   const closeQueueButton = document.createElement('button');
   closeQueueButton.className = 'zydka-player-queue__close';
@@ -468,7 +457,8 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
   error.className = 'zydka-player-error';
   error.hidden = true;
 
-  footer.append(status, error);
+  footer.hidden = true;
+  footer.append(error);
   card.append(header, actions, timeline, volumeControl, shareControl, footer);
   root.append(card, queueOverlay);
 
@@ -478,6 +468,7 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
 
   let refreshState = (): void => undefined;
   let renderedQueueSignature = '';
+  let loggedError = '';
   let hasMultipleQueuedTracks = false;
   let isQueueOpen = false;
   let repeatMode: RepeatMode = 'off';
@@ -770,7 +761,7 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
       const listItem = document.createElement('li');
       const item = document.createElement('button');
       const isActive = index === currentIndex;
-      const displayTitle = renderText(track.title || 'Track ' + String(index + 1));
+      const displayTitle = renderText(track.title || 'Morceau ' + String(index + 1));
 
       item.className = isActive
         ? 'zydka-player-queue__item zydka-player-queue__item--active'
@@ -897,7 +888,7 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
 
     root.classList.toggle('zydka-player-root--has-queue', hasQueue);
     actions.classList.toggle('zydka-player-actions--has-queue', hasQueue);
-    queueButton.textContent = hasQueue ? `A suivre (${queue.length})` : 'A suivre';
+    queueButton.textContent = hasQueue ? `À suivre (${queue.length})` : 'À suivre';
     card.className = `zydka-player-card zydka-player-state-${state.status}`;
     title.textContent = renderText(displayTrack?.title ?? fallbackDisplayTrack.title);
     artist.textContent = renderText(displayTrack?.artist ?? fallbackDisplayTrack.artist);
@@ -929,7 +920,8 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
       coverFallback.hidden = false;
     }
 
-    trackCounter.textContent = `Track ${displayIndex} / ${queue.length}`;
+    trackCounter.textContent = `${displayIndex} / ${queue.length}`;
+    trackCounter.setAttribute('aria-label', `Morceau ${displayIndex} sur ${queue.length}`);
     shuffleButton.classList.toggle('zydka-player-mode-button--active', shuffleEnabled);
     shuffleButton.setAttribute('aria-pressed', String(shuffleEnabled));
     setIconButton(
@@ -946,8 +938,7 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
     previousButton.disabled = getPreviousIndex(navigation, shuffleHistory) === null;
     nextButton.disabled = !canGoNext;
     toggleButton.classList.toggle('zydka-player-toggle-button--playing', state.isPlaying);
-    setIconButton(toggleButton, state.isPlaying ? 'Pause' : 'Play', state.isPlaying ? 'pause' : 'play');
-    statusValue.textContent = state.status;
+    setIconButton(toggleButton, state.isPlaying ? 'Pause' : 'Lecture', state.isPlaying ? 'pause' : 'play');
     currentTime.textContent = timelineDisplay.currentLabel;
     duration.textContent = timelineDisplay.durationLabel;
     progress.disabled = !timelineDisplay.hasKnownDuration;
@@ -964,7 +955,7 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
     volumeValue.textContent = `${Math.round(volume * 100)}%`;
     volumeControl.classList.toggle('zydka-player-volume--muted', muted);
     muteButton.classList.toggle('zydka-player-mute-button--muted', muted);
-    setIconButton(muteButton, muted ? 'Unmute' : 'Mute', muted ? 'muted' : 'volume');
+    setIconButton(muteButton, muted ? 'Rétablir le son' : 'Couper le son', muted ? 'muted' : 'volume');
     const queueSignature = getQueueSignature(queue, currentIndex);
 
     if (queueSignature !== renderedQueueSignature) {
@@ -972,8 +963,15 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
       renderedQueueSignature = queueSignature;
     }
 
-    error.textContent = state.error ?? '';
+    // Visitors get a plain message; the technical cause stays in the console.
+    if (state.error && state.error !== loggedError) {
+      console.error('[Zydka Player]', state.error);
+    }
+
+    loggedError = state.error ?? '';
+    error.textContent = state.error ? UNAVAILABLE_TRACK_MESSAGE : '';
     error.hidden = !state.error;
+    footer.hidden = !state.error;
     mediaSession.refreshMetadata();
 
     if (!isUserSeeking) {
@@ -1238,7 +1236,16 @@ function bootstrap(): void {
   const shortcodeQueue = readQueueFromRoot(root, shortcodeTrack);
 
   window.ZydkaPlayer.setQueue(shortcodeQueue);
-  renderTestPlayer(root, shortcodeQueue[0] ?? shortcodeTrack);
+
+  const firstTrack = window.ZydkaPlayer.getQueue()[0];
+
+  // Nothing playable: keep whatever the page rendered (e.g. the Player Manager fallback).
+  if (!firstTrack) {
+    console.warn('[Zydka Player] No playable track: give each track an audio URL ("src").');
+    return;
+  }
+
+  renderTestPlayer(root, firstTrack);
 
   console.log('[Zydka Player] Bridge initialized - window.ZydkaPlayer ready.');
 }

@@ -9,6 +9,7 @@ interface FakeHowl {
     _ended?: boolean;
   }>;
   duration: () => number;
+  playing: () => boolean;
   seek: (seconds?: number) => number;
 }
 
@@ -27,6 +28,7 @@ describe("AudioEngine.seek", () => {
     attachHowl(engine, {
       _sounds: [sound],
       duration: () => 180,
+      playing: () => true,
       seek: (seconds?: number) => {
         if (typeof seconds === "number") howlerSeekCalls += 1;
         return node.currentTime;
@@ -42,6 +44,37 @@ describe("AudioEngine.seek", () => {
     assert.deepEqual(positions, [75]);
   });
 
+  it("leaves a paused media node in place and lets Howler apply the target on play", () => {
+    const engine = new AudioEngine();
+    const node = { currentTime: 12 };
+    const sound = { _node: node, _seek: 12, _ended: false };
+    let isPlaying = false;
+    let howlerSeekCalls = 0;
+
+    attachHowl(engine, {
+      _sounds: [sound],
+      duration: () => 180,
+      playing: () => isPlaying,
+      seek: (seconds?: number) => {
+        if (typeof seconds === "number") howlerSeekCalls += 1;
+        return node.currentTime;
+      },
+    });
+
+    assert.equal(engine.seek(90), 90);
+    // Moving a paused node would make Howler wait for 'canplaythrough' before playing.
+    assert.equal(node.currentTime, 12);
+    assert.equal(sound._seek, 90);
+    assert.equal(howlerSeekCalls, 0);
+    assert.equal(engine.getCurrentTime(), 90);
+
+    // Howler's play() moves the node to _seek right before node.play().
+    node.currentTime = sound._seek;
+    isPlaying = true;
+    node.currentTime = 91;
+    assert.equal(engine.getCurrentTime(), 91);
+  });
+
   it("falls back to Howler when no HTML5 media node is available", () => {
     const engine = new AudioEngine();
     let position = 10;
@@ -49,6 +82,7 @@ describe("AudioEngine.seek", () => {
 
     attachHowl(engine, {
       duration: () => 120,
+      playing: () => false,
       seek: (seconds?: number) => {
         if (typeof seconds === "number") {
           howlerSeekCalls += 1;

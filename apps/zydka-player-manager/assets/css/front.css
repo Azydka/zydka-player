@@ -1,0 +1,70 @@
+.zydka-manager-playlist {
+	display: grid;
+	gap: 16px;
+	margin: 24px 0;
+}
+
+.zydka-manager-player-root {
+	display: block;
+	margin: 24px 0;
+}
+
+.zydka-manager-player-root .zydka-manager-playlist {
+	margin: 0;
+}
+
+.zydka-manager-playlist-header h2 {
+	margin: 0;
+}
+
+.zydka-manager-track {
+	align-items: center;
+	border: 1px solid #dcdcde;
+	display: grid;
+	gap: 14px;
+	grid-template-columns: 96px 1fr;
+	padding: 12px;
+}
+
+.zydka-manager-track-cover {
+	align-items: center;
+	aspect-ratio: 1 / 1;
+	background: #f6f7f7;
+	display: flex;
+	justify-content: center;
+	overflow: hidden;
+	text-align: center;
+}
+
+.zydka-manager-track-cover img {
+	display: block;
+	height: 100%;
+	object-fit: cover;
+	width: 100%;
+}
+
+.zydka-manager-track-body h3,
+.zydka-manager-track-artist,
+.zydka-manager-track-missing {
+	margin: 0 0 8px;
+}
+
+.zydka-manager-track-body audio {
+	display: block;
+	width: 100%;
+}
+
+.zydka-manager-track-missing,
+.zydka-manager-playlist-empty {
+	color: #646970;
+}
+
+@media (max-width: 600px) {
+	.zydka-manager-track {
+		grid-template-columns: 1fr;
+	}
+
+	.zydka-manager-track-cover {
+		max-width: 180px;
+	}
+}

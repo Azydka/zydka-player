@@ -215,6 +215,12 @@ Résultat :
 
 ## Changelog
 
+### 0.3.2 - correctif seek en pause
+
+- Un seek fait pendant la pause (écran verrouillé ou page) est mémorisé et appliqué par Howler au moment de la reprise, au lieu de déplacer l'élément audio en pause.
+- Corrige la lecture qui ne reprenait plus sur Android (Chrome, Xiaomi 13T) après pause, déplacement du curseur puis lecture : Howler attendait un `canplaythrough` que Chrome n'émet pas pour un média en pause écran verrouillé.
+- La position affichée (page et écran verrouillé) reste sur la cible pendant la pause.
+
 ### 0.3.1 - correctif seek écran verrouillé
 
 - Le déplacement dans un morceau depuis l'écran verrouillé conserve désormais le flux audio actif au lieu de le mettre en pause puis de tenter de le relancer.

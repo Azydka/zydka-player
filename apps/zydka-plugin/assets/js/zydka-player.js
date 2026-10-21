@@ -2265,6 +2265,8 @@
       __publicField(this, "currentTrack", null);
       __publicField(this, "status", "idle");
       __publicField(this, "errorMessage", null);
+      /** Seek target recorded while paused; Howler applies it on the next play(). */
+      __publicField(this, "pausedSeek", null);
       __publicField(this, "volume");
       __publicField(this, "previousVolume");
       __publicField(this, "muted", false);
@@ -2302,6 +2304,7 @@
         this.emit("loaded", { track, duration: this.getDuration() });
       });
       howl.on("play", () => {
+        this.pausedSeek = null;
         this.setStatus("playing");
         this.emit("playing", { position: this.getCurrentTime() });
       });
@@ -2346,6 +2349,9 @@
       this.setStatus("idle");
     }
     getCurrentTime() {
+      if (this.pausedSeek !== null && this.howl && !this.howl.playing()) {
+        return this.pausedSeek;
+      }
       return this.safeSeek();
     }
     getDuration() {
@@ -2425,6 +2431,7 @@
       this.setStatus("idle");
     }
     teardownHowl() {
+      this.pausedSeek = null;
       if (this.howl) {
         this.howl.off();
         this.howl.stop();
@@ -2447,7 +2454,7 @@
       return typeof position === "number" && Number.isFinite(position) ? position : 0;
     }
     seekActiveHtml5Node(seconds) {
-      var _a;
+      var _a, _b;
       const sounds = (_a = this.howl) == null ? void 0 : _a._sounds;
       const sound = sounds == null ? void 0 : sounds.find(
         (candidate) => {
@@ -2457,7 +2464,12 @@
       );
       if (!(sound == null ? void 0 : sound._node)) return false;
       try {
-        sound._node.currentTime = seconds;
+        if ((_b = this.howl) == null ? void 0 : _b.playing()) {
+          sound._node.currentTime = seconds;
+          this.pausedSeek = null;
+        } else {
+          this.pausedSeek = seconds;
+        }
         sound._seek = seconds;
         sound._ended = false;
         return true;

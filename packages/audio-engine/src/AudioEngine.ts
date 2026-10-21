@@ -24,6 +24,8 @@ export class AudioEngine {
   private currentTrack: AudioTrack | null = null;
   private status: AudioEngineStatus = "idle";
   private errorMessage: string | null = null;
+  /** Seek target recorded while paused; Howler applies it on the next play(). */
+  private pausedSeek: number | null = null;
   private volume: number;
   private previousVolume: number;
   private muted = false;
@@ -71,6 +73,7 @@ export class AudioEngine {
     });
 
     howl.on("play", () => {
+      this.pausedSeek = null;
       this.setStatus("playing");
       this.emit("playing", { position: this.getCurrentTime() });
     });
@@ -126,6 +129,10 @@ export class AudioEngine {
   }
 
   getCurrentTime(): number {
+    if (this.pausedSeek !== null && this.howl && !this.howl.playing()) {
+      return this.pausedSeek;
+    }
+
     return this.safeSeek();
   }
 
@@ -240,6 +247,8 @@ export class AudioEngine {
   }
 
   private teardownHowl(): void {
+    this.pausedSeek = null;
+
     if (this.howl) {
       this.howl.off();
       this.howl.stop();
@@ -275,7 +284,17 @@ export class AudioEngine {
     if (!sound?._node) return false;
 
     try {
-      sound._node.currentTime = seconds;
+      // Paused: only record the target. Moving a paused element drops its buffered data,
+      // and Howler's play() then waits for 'canplaythrough', which Chrome Android never
+      // fires for paused media while the screen is locked. play() applies _seek itself
+      // right before node.play().
+      if (this.howl?.playing()) {
+        sound._node.currentTime = seconds;
+        this.pausedSeek = null;
+      } else {
+        this.pausedSeek = seconds;
+      }
+
       sound._seek = seconds;
       sound._ended = false;
       return true;

@@ -19,6 +19,7 @@ export interface IPlayerState {
   getQueue: () => ITrack[];
   getCurrentIndex: () => number;
   playAt: (index: number) => boolean;
+  select: (index: number) => boolean;
   next: () => boolean;
   previous: () => boolean;
   play: () => void;

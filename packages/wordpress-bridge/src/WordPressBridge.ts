@@ -27,6 +27,10 @@ export class WordPressBridge {
     return PlayerController.playAt(index);
   }
 
+  static select(index: number) {
+    return PlayerController.select(index);
+  }
+
   static next() {
     return PlayerController.next();
   }

@@ -53,6 +53,18 @@
   color: var(--zydka-graphite);
   box-shadow: var(--zydka-shadow);
   backdrop-filter: blur(14px);
+  transition: box-shadow 0.45s ease;
+}
+
+/* Track opened from a shared link: brief outline so the visitor sees where it is. */
+.zydka-player-root--shared .zydka-player-card {
+  box-shadow: var(--zydka-shadow), 0 0 0 3px rgba(189, 23, 30, 0.38);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .zydka-player-card {
+    transition: none;
+  }
 }
 
 .zydka-player-card::before {

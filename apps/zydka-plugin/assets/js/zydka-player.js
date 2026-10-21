@@ -2338,6 +2338,13 @@
       this.howl.stop();
       this.setStatus("ready");
     }
+    /** Release the current track without touching listeners or volume. */
+    unload() {
+      this.teardownHowl();
+      this.currentTrack = null;
+      this.errorMessage = null;
+      this.setStatus("idle");
+    }
     getCurrentTime() {
       return this.safeSeek();
     }
@@ -2622,6 +2629,23 @@
       syncVolume();
       return true;
     },
+    // Point the queue at a track without starting it (autoplay is blocked anyway).
+    select: (index) => {
+      const { queue, currentIndex } = get();
+      if (!queue[index]) return false;
+      if (index === currentIndex) return true;
+      audioEngine.unload();
+      set({
+        currentTrack: null,
+        currentIndex: index,
+        status: "idle",
+        isPlaying: false,
+        position: 0,
+        duration: 0,
+        error: null
+      });
+      return true;
+    },
     next: () => {
       const { currentIndex, queue, playAt } = get();
       if (queue.length === 0) return false;
@@ -2685,6 +2709,9 @@
     },
     playAt(index) {
       return usePlayerStore.getState().playAt(index);
+    },
+    select(index) {
+      return usePlayerStore.getState().select(index);
     },
     next() {
       return usePlayerStore.getState().next();
@@ -2760,6 +2787,9 @@
     }
     static playAt(index) {
       return PlayerController.playAt(index);
+    }
+    static select(index) {
+      return PlayerController.select(index);
     }
     static next() {
       return PlayerController.next();
@@ -3140,6 +3170,38 @@
       refreshPosition,
       refreshPositionThrottled
     };
+  }
+
+  // src/sharedTrack.ts
+  var TRACK_HASH_PREFIX = "track-";
+  function normalizeTrackId(id) {
+    return id === null || id === void 0 ? "" : String(id).trim();
+  }
+  function getTrackHash(id) {
+    const trackId = normalizeTrackId(id);
+    return trackId ? TRACK_HASH_PREFIX + encodeURIComponent(trackId) : "";
+  }
+  function parseTrackHash(hash) {
+    const fragment = (hash != null ? hash : "").replace(/^#/, "");
+    if (!fragment.startsWith(TRACK_HASH_PREFIX)) return null;
+    let trackId;
+    try {
+      trackId = decodeURIComponent(fragment.slice(TRACK_HASH_PREFIX.length));
+    } catch (e) {
+      return null;
+    }
+    trackId = trackId.trim();
+    return trackId || null;
+  }
+  function findTrackIndex2(queue, trackId) {
+    if (!trackId) return -1;
+    return queue.findIndex((track) => normalizeTrackId(track.id) === trackId);
+  }
+  function getShareText(title, artist) {
+    const trackTitle = (title != null ? title : "").trim();
+    const trackArtist = (artist != null ? artist : "").trim();
+    if (trackTitle && trackArtist) return `${trackArtist} \u2013 ${trackTitle}`;
+    return trackTitle || trackArtist;
   }
 
   // src/queueNavigation.ts
@@ -3654,8 +3716,9 @@
     };
     const getShareUrl = (track) => {
       const url = new URL(window.location.href);
-      if ((track == null ? void 0 : track.id) !== void 0 && track.id !== null && String(track.id).trim()) {
-        url.hash = `track-${encodeURIComponent(String(track.id).trim())}`;
+      const hash = getTrackHash(track == null ? void 0 : track.id);
+      if (hash) {
+        url.hash = hash;
       }
       return url.toString();
     };
@@ -3678,10 +3741,9 @@
       const currentIndex = (_g = (_f = (_e = window.ZydkaPlayer) == null ? void 0 : _e.getCurrentIndex()) != null ? _f : state == null ? void 0 : state.currentIndex) != null ? _g : -1;
       const track = (_i = (_h = state == null ? void 0 : state.currentTrack) != null ? _h : queue[currentIndex]) != null ? _i : normalizeTrack(fallbackDisplayTrack);
       const title2 = renderText((track == null ? void 0 : track.title) || "Zydka Player");
-      const artist2 = renderText((track == null ? void 0 : track.artist) || "").trim();
-      const text = artist2 ? `${artist2} - ${title2}` : "\xC9couter sur Louis94";
+      const text = getShareText(track == null ? void 0 : track.title, track == null ? void 0 : track.artist);
       const url = getShareUrl(track);
-      const shareData = { title: title2, text, url };
+      const shareData = text ? { title: title2, text, url } : { title: title2, url };
       try {
         if (typeof navigator.share === "function") {
           await navigator.share(shareData);
@@ -4122,7 +4184,29 @@
       mediaSession.refreshMetadata();
       mediaSession.refreshPosition();
     });
+    let sharedHighlightTimer;
+    const openSharedTrack = () => {
+      var _a2, _b, _c, _d;
+      const queue = (_b = (_a2 = window.ZydkaPlayer) == null ? void 0 : _a2.getQueue()) != null ? _b : [];
+      const index = findTrackIndex2(queue, parseTrackHash(window.location.hash));
+      if (index < 0) return;
+      if (((_c = window.ZydkaPlayer) == null ? void 0 : _c.getCurrentIndex()) !== index) {
+        shuffleHistory = [];
+        shufflePlayed = [];
+        (_d = window.ZydkaPlayer) == null ? void 0 : _d.select(index);
+        refreshState();
+      }
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      root.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
+      root.classList.add("zydka-player-root--shared");
+      window.clearTimeout(sharedHighlightTimer);
+      sharedHighlightTimer = window.setTimeout(() => {
+        root.classList.remove("zydka-player-root--shared");
+      }, 2400);
+    };
+    window.addEventListener("hashchange", openSharedTrack);
     refreshState();
+    openSharedTrack();
     window.setInterval(refreshState, 250);
   }
   function bootstrap() {
@@ -4145,6 +4229,7 @@
       getQueue: () => WordPressBridge.getQueue(),
       getCurrentIndex: () => WordPressBridge.getCurrentIndex(),
       playAt: (index) => WordPressBridge.playAt(index),
+      select: (index) => WordPressBridge.select(index),
       next: () => WordPressBridge.next(),
       previous: () => WordPressBridge.previous(),
       setVolume: (value) => WordPressBridge.setVolume(value),

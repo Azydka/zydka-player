@@ -22,6 +22,10 @@ export const PlayerController = {
     return usePlayerStore.getState().playAt(index);
   },
 
+  select(index: number) {
+    return usePlayerStore.getState().select(index);
+  },
+
   next() {
     return usePlayerStore.getState().next();
   },

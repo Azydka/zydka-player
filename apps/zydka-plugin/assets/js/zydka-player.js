@@ -2549,6 +2549,9 @@
       error: message
     });
   });
+  function onTrackEnded(listener) {
+    return audioEngine.on("ended", () => listener());
+  }
   var usePlayerStore = createStore((set, get) => ({
     currentTrack: null,
     currentIndex: -1,
@@ -2719,6 +2722,13 @@
     isMuted() {
       return usePlayerStore.getState().isMuted();
     },
+    /**
+     * Runs from the audio "end" event, so the next track can start even while
+     * timers are throttled (locked phone, hidden tab).
+     */
+    onEnded(listener) {
+      return onTrackEnded(listener);
+    },
     state() {
       const state = usePlayerStore.getState();
       return __spreadProps(__spreadValues({}, state), {
@@ -2783,6 +2793,9 @@
     }
     static isMuted() {
       return PlayerController.isMuted();
+    }
+    static onEnded(listener) {
+      return PlayerController.onEnded(listener);
     }
     static state() {
       return PlayerController.state();
@@ -3129,6 +3142,48 @@
     };
   }
 
+  // src/queueNavigation.ts
+  function cycleRepeatMode(mode) {
+    if (mode === "off") return "queue";
+    if (mode === "queue") return "one";
+    return "off";
+  }
+  function pickRandom(candidates, random) {
+    const position = Math.min(candidates.length - 1, Math.floor(random() * candidates.length));
+    return candidates[Math.max(0, position)];
+  }
+  function getNextTrack(state, reason, random = Math.random) {
+    const { queueLength, currentIndex, repeatMode, shuffle } = state;
+    if (queueLength <= 0) return null;
+    if (reason === "ended" && repeatMode === "one") {
+      return { index: Math.max(0, Math.min(currentIndex, queueLength - 1)), startsNewShuffleCycle: false };
+    }
+    const loops = repeatMode === "queue";
+    if (shuffle) {
+      const played = new Set(state.shufflePlayed);
+      const all = Array.from({ length: queueLength }, (_, index) => index);
+      const unplayed = all.filter((index) => index !== currentIndex && !played.has(index));
+      if (unplayed.length > 0) {
+        return { index: pickRandom(unplayed, random), startsNewShuffleCycle: false };
+      }
+      if (!loops) return null;
+      const others = all.filter((index) => index !== currentIndex);
+      return { index: others.length > 0 ? pickRandom(others, random) : 0, startsNewShuffleCycle: true };
+    }
+    if (currentIndex < queueLength - 1) {
+      return { index: Math.max(0, currentIndex + 1), startsNewShuffleCycle: false };
+    }
+    return loops ? { index: 0, startsNewShuffleCycle: false } : null;
+  }
+  function getPreviousIndex(state, shuffleHistory) {
+    if (state.queueLength <= 0) return null;
+    const lastShuffled = shuffleHistory[shuffleHistory.length - 1];
+    if (state.shuffle && lastShuffled !== void 0 && lastShuffled >= 0 && lastShuffled < state.queueLength) {
+      return lastShuffled;
+    }
+    return state.currentIndex > 0 ? Math.min(state.currentIndex - 1, state.queueLength - 1) : null;
+  }
+
   // src/timeline.ts
   var KEYBOARD_SEEK_STEP_SECONDS = 5;
   var KEYBOARD_SEEK_LARGE_STEP_SECONDS = 15;
@@ -3346,6 +3401,7 @@
     button.innerHTML = controlIcons[icon];
   }
   function renderTestPlayer(root, fallbackDisplayTrack) {
+    var _a;
     root.innerHTML = "";
     const card = document.createElement("div");
     card.className = "zydka-player-card zydka-player-state-idle";
@@ -3519,7 +3575,7 @@
     let repeatMode = "off";
     let shuffleEnabled = false;
     let shuffleHistory = [];
-    let handledEndedSignature = "";
+    let shufflePlayed = [];
     let shareFeedbackTimer;
     let isUserSeeking = false;
     let pendingSeekSeconds = null;
@@ -3540,71 +3596,61 @@
       });
     };
     const playCurrentTrack = () => {
-      var _a, _b, _c, _d, _e;
-      const state = (_a = window.ZydkaPlayer) == null ? void 0 : _a.state();
+      var _a2, _b, _c, _d;
+      const state = (_a2 = window.ZydkaPlayer) == null ? void 0 : _a2.state();
       if (state == null ? void 0 : state.currentTrack) {
         (_b = window.ZydkaPlayer) == null ? void 0 : _b.resume();
         return;
       }
       const currentIndex = (_d = (_c = window.ZydkaPlayer) == null ? void 0 : _c.getCurrentIndex()) != null ? _d : 0;
-      (_e = window.ZydkaPlayer) == null ? void 0 : _e.playAt(Math.max(0, currentIndex));
+      playAtIndex(Math.max(0, currentIndex), { resetShuffleHistory: false });
     };
-    const getRandomQueueIndex = (queueLength, currentIndex) => {
-      if (queueLength <= 0) return -1;
-      if (queueLength === 1) return 0;
-      let nextIndex = Math.floor(Math.random() * queueLength);
-      if (nextIndex === currentIndex) {
-        nextIndex = (nextIndex + 1 + Math.floor(Math.random() * (queueLength - 1))) % queueLength;
-      }
-      return nextIndex;
+    const getNavigationState = () => {
+      var _a2, _b, _c, _d;
+      return {
+        queueLength: (_b = (_a2 = window.ZydkaPlayer) == null ? void 0 : _a2.getQueue().length) != null ? _b : 0,
+        currentIndex: (_d = (_c = window.ZydkaPlayer) == null ? void 0 : _c.getCurrentIndex()) != null ? _d : -1,
+        repeatMode,
+        shuffle: shuffleEnabled,
+        shufflePlayed
+      };
     };
     const playAtIndex = (index, options = {}) => {
-      var _a, _b;
-      const didPlay = (_b = (_a = window.ZydkaPlayer) == null ? void 0 : _a.playAt(index)) != null ? _b : false;
-      if (didPlay && options.resetShuffleHistory !== false) {
+      var _a2, _b;
+      const didPlay = (_b = (_a2 = window.ZydkaPlayer) == null ? void 0 : _a2.playAt(index)) != null ? _b : false;
+      if (!didPlay) return false;
+      if (options.resetShuffleHistory !== false) {
         shuffleHistory = [];
       }
-      return didPlay;
+      if (!shufflePlayed.includes(index)) {
+        shufflePlayed = [...shufflePlayed, index];
+      }
+      return true;
     };
-    const playNextTrack = () => {
-      var _a, _b, _c, _d, _e, _f, _g, _h, _i;
-      const state = (_a = window.ZydkaPlayer) == null ? void 0 : _a.state();
-      const queue = (_d = (_c = (_b = window.ZydkaPlayer) == null ? void 0 : _b.getQueue()) != null ? _c : state == null ? void 0 : state.queue) != null ? _d : [];
-      const currentIndex = (_g = (_f = (_e = window.ZydkaPlayer) == null ? void 0 : _e.getCurrentIndex()) != null ? _f : state == null ? void 0 : state.currentIndex) != null ? _g : -1;
-      if (queue.length === 0) return false;
-      if (shuffleEnabled) {
-        const nextIndex = getRandomQueueIndex(queue.length, currentIndex);
-        if (nextIndex < 0) return false;
-        if (currentIndex >= 0 && queue.length > 1) {
-          shuffleHistory.push(currentIndex);
-        }
-        return playAtIndex(nextIndex, { resetShuffleHistory: false });
+    const playNextTrack = (reason = "user") => {
+      const navigation = getNavigationState();
+      const nextTrack = getNextTrack(navigation, reason);
+      if (!nextTrack) return false;
+      if (shuffleEnabled && navigation.currentIndex >= 0 && nextTrack.index !== navigation.currentIndex) {
+        shuffleHistory.push(navigation.currentIndex);
       }
-      if (currentIndex < queue.length - 1) {
-        return (_i = (_h = window.ZydkaPlayer) == null ? void 0 : _h.next()) != null ? _i : false;
+      if (nextTrack.startsNewShuffleCycle) {
+        shufflePlayed = [];
       }
-      if (repeatMode === "queue") {
-        return playAtIndex(0);
-      }
-      return false;
+      return playAtIndex(nextTrack.index, { resetShuffleHistory: false });
     };
     const playPreviousTrack = () => {
-      var _a, _b;
-      if (shuffleEnabled && shuffleHistory.length > 0) {
-        const previousIndex = shuffleHistory.pop();
-        if (typeof previousIndex === "number") {
-          return playAtIndex(previousIndex, { resetShuffleHistory: false });
-        }
+      const previousIndex = getPreviousIndex(getNavigationState(), shuffleHistory);
+      if (previousIndex === null) return false;
+      if (shuffleEnabled && shuffleHistory[shuffleHistory.length - 1] === previousIndex) {
+        shuffleHistory.pop();
       }
-      return (_b = (_a = window.ZydkaPlayer) == null ? void 0 : _a.previous()) != null ? _b : false;
+      return playAtIndex(previousIndex, { resetShuffleHistory: false });
     };
     const getRepeatLabel = () => {
       if (repeatMode === "queue") return "R\xE9p\xE9ter la file";
       if (repeatMode === "one") return "R\xE9p\xE9ter le morceau";
       return "Activer la r\xE9p\xE9tition";
-    };
-    const cycleRepeatMode = () => {
-      repeatMode = repeatMode === "off" ? "queue" : repeatMode === "queue" ? "one" : "off";
     };
     const getShareUrl = (track) => {
       const url = new URL(window.location.href);
@@ -3626,8 +3672,8 @@
       }, 2200);
     };
     const shareCurrentTrack = async () => {
-      var _a, _b, _c, _d, _e, _f, _g, _h, _i;
-      const state = (_a = window.ZydkaPlayer) == null ? void 0 : _a.state();
+      var _a2, _b, _c, _d, _e, _f, _g, _h, _i;
+      const state = (_a2 = window.ZydkaPlayer) == null ? void 0 : _a2.state();
       const queue = (_d = (_c = (_b = window.ZydkaPlayer) == null ? void 0 : _b.getQueue()) != null ? _c : state == null ? void 0 : state.queue) != null ? _d : [];
       const currentIndex = (_g = (_f = (_e = window.ZydkaPlayer) == null ? void 0 : _e.getCurrentIndex()) != null ? _f : state == null ? void 0 : state.currentIndex) != null ? _g : -1;
       const track = (_i = (_h = state == null ? void 0 : state.currentTrack) != null ? _h : queue[currentIndex]) != null ? _i : normalizeTrack(fallbackDisplayTrack);
@@ -3659,38 +3705,9 @@
       }
       showShareFeedback("Impossible de copier");
     };
-    const handleEndedPlayback = (state, queue, currentIndex) => {
-      var _a, _b;
-      if (state.status !== "ended" || repeatMode === "off") {
-        if (state.status !== "ended") {
-          handledEndedSignature = "";
-        }
-        return;
-      }
-      const endedSignature = `${currentIndex}:${(_b = (_a = state.currentTrack) == null ? void 0 : _a.id) != null ? _b : ""}:${Math.round(state.duration)}`;
-      if (endedSignature === handledEndedSignature) return;
-      handledEndedSignature = endedSignature;
-      if (repeatMode === "one") {
-        playAtIndex(Math.max(0, currentIndex), { resetShuffleHistory: false });
-        return;
-      }
-      if (queue.length === 0) return;
-      if (shuffleEnabled) {
-        const nextIndex = getRandomQueueIndex(queue.length, currentIndex);
-        if (nextIndex >= 0) {
-          playAtIndex(nextIndex, { resetShuffleHistory: false });
-        }
-        return;
-      }
-      if (currentIndex < queue.length - 1) {
-        playAtIndex(Math.max(0, currentIndex + 1), { resetShuffleHistory: false });
-      } else {
-        playAtIndex(0, { resetShuffleHistory: false });
-      }
-    };
     const getSeekDuration = () => {
-      var _a, _b;
-      return (_b = (_a = window.ZydkaPlayer) == null ? void 0 : _a.getDuration()) != null ? _b : 0;
+      var _a2, _b;
+      return (_b = (_a2 = window.ZydkaPlayer) == null ? void 0 : _a2.getDuration()) != null ? _b : 0;
     };
     const clearSeekReleaseTimer = () => {
       if (seekReleaseTimer !== void 0) {
@@ -3699,7 +3716,7 @@
       }
     };
     const commitSeek = (seconds) => {
-      var _a;
+      var _a2;
       const target = clampSeekTime(seconds, getSeekDuration());
       isUserSeeking = false;
       progress.classList.remove("zydka-player-progress--dragging");
@@ -3710,7 +3727,7 @@
         return;
       }
       pendingSeekSeconds = target;
-      (_a = window.ZydkaPlayer) == null ? void 0 : _a.seek(target);
+      (_a2 = window.ZydkaPlayer) == null ? void 0 : _a2.seek(target);
       refreshState();
       mediaSession.refreshPosition();
       seekReleaseTimer = window.setTimeout(() => {
@@ -3722,14 +3739,14 @@
     };
     const mediaSession = setupMediaSession({
       getCurrentTrack: () => {
-        var _a, _b;
-        return (_b = (_a = window.ZydkaPlayer) == null ? void 0 : _a.state().currentTrack) != null ? _b : null;
+        var _a2, _b;
+        return (_b = (_a2 = window.ZydkaPlayer) == null ? void 0 : _a2.state().currentTrack) != null ? _b : null;
       },
       getArtwork: (track) => getDisplayCoverUrl(track),
       play: playCurrentTrack,
       pause: () => {
-        var _a;
-        return (_a = window.ZydkaPlayer) == null ? void 0 : _a.pause();
+        var _a2;
+        return (_a2 = window.ZydkaPlayer) == null ? void 0 : _a2.pause();
       },
       previous: () => {
         playPreviousTrack();
@@ -3741,17 +3758,21 @@
         commitSeek(seconds);
       },
       getCurrentTime: () => {
-        var _a, _b;
-        return (_b = (_a = window.ZydkaPlayer) == null ? void 0 : _a.getCurrentTime()) != null ? _b : 0;
+        var _a2, _b;
+        return (_b = (_a2 = window.ZydkaPlayer) == null ? void 0 : _a2.getCurrentTime()) != null ? _b : 0;
       },
       getDuration: () => {
-        var _a, _b;
-        return (_b = (_a = window.ZydkaPlayer) == null ? void 0 : _a.getDuration()) != null ? _b : 0;
+        var _a2, _b;
+        return (_b = (_a2 = window.ZydkaPlayer) == null ? void 0 : _a2.getDuration()) != null ? _b : 0;
       },
       isPlaying: () => {
-        var _a, _b;
-        return (_b = (_a = window.ZydkaPlayer) == null ? void 0 : _a.state().isPlaying) != null ? _b : false;
+        var _a2, _b;
+        return (_b = (_a2 = window.ZydkaPlayer) == null ? void 0 : _a2.state().isPlaying) != null ? _b : false;
       }
+    });
+    (_a = window.ZydkaPlayer) == null ? void 0 : _a.onEnded(() => {
+      playNextTrack("ended");
+      refreshState();
     });
     const inlineQueueQuery = window.matchMedia("(min-width: 900px)");
     const isInlineQueueView = () => inlineQueueQuery.matches;
@@ -3845,8 +3866,7 @@
         meta.append(itemTitle, itemArtist, itemState);
         item.append(thumb, meta, itemDuration);
         item.addEventListener("click", () => {
-          var _a;
-          (_a = window.ZydkaPlayer) == null ? void 0 : _a.playAt(index);
+          playAtIndex(index, { resetShuffleHistory: false });
           refreshState();
           if (isMobileQueueView()) {
             setQueueOpen(false);
@@ -3867,8 +3887,8 @@
       }))
     });
     refreshState = () => {
-      var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s;
-      const state = (_a = window.ZydkaPlayer) == null ? void 0 : _a.state();
+      var _a2, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s;
+      const state = (_a2 = window.ZydkaPlayer) == null ? void 0 : _a2.state();
       if (!state) return;
       const queue = (_c = (_b = window.ZydkaPlayer) == null ? void 0 : _b.getQueue()) != null ? _c : state.queue;
       const currentIndex = (_e = (_d = window.ZydkaPlayer) == null ? void 0 : _d.getCurrentIndex()) != null ? _e : state.currentIndex;
@@ -3880,7 +3900,8 @@
       const volume = (_m = (_l = window.ZydkaPlayer) == null ? void 0 : _l.getVolume()) != null ? _m : state.volume;
       const muted = (_o = (_n = window.ZydkaPlayer) == null ? void 0 : _n.isMuted()) != null ? _o : state.muted;
       const hasQueue = queue.length > 1;
-      const canGoNext = queue.length > 0 && (shuffleEnabled || currentIndex < queue.length - 1 || repeatMode === "queue");
+      const navigation = getNavigationState();
+      const canGoNext = getNextTrack(navigation, "user", () => 0) !== null;
       if (hasQueue !== hasMultipleQueuedTracks) {
         hasMultipleQueuedTracks = hasQueue;
         queueButton.hidden = !hasQueue;
@@ -3929,7 +3950,7 @@
       repeatButton.setAttribute("aria-pressed", String(repeatMode !== "off"));
       setIconButton(repeatButton, getRepeatLabel(), "repeat");
       setIconButton(shareButton, `Partager ${renderText((displayTrack == null ? void 0 : displayTrack.title) || "le morceau")}`, "share");
-      previousButton.disabled = shuffleEnabled ? shuffleHistory.length === 0 && currentIndex <= 0 : currentIndex <= 0;
+      previousButton.disabled = getPreviousIndex(navigation, shuffleHistory) === null;
       nextButton.disabled = !canGoNext;
       toggleButton.classList.toggle("zydka-player-toggle-button--playing", state.isPlaying);
       setIconButton(toggleButton, state.isPlaying ? "Pause" : "Play", state.isPlaying ? "pause" : "play");
@@ -3963,7 +3984,6 @@
           mediaSession.refreshPosition();
         }
       }
-      handleEndedPlayback(state, queue, currentIndex);
     };
     coverImage.addEventListener("error", () => {
       const failedCover = coverImage.dataset.coverSrc;
@@ -3980,8 +4000,8 @@
       refreshState();
     });
     toggleButton.addEventListener("click", () => {
-      var _a, _b;
-      const state = (_a = window.ZydkaPlayer) == null ? void 0 : _a.state();
+      var _a2, _b;
+      const state = (_a2 = window.ZydkaPlayer) == null ? void 0 : _a2.state();
       if (state == null ? void 0 : state.isPlaying) {
         (_b = window.ZydkaPlayer) == null ? void 0 : _b.pause();
       } else {
@@ -3994,12 +4014,15 @@
       refreshState();
     });
     shuffleButton.addEventListener("click", () => {
+      var _a2, _b;
       shuffleEnabled = !shuffleEnabled;
       shuffleHistory = [];
+      const currentIndex = (_b = (_a2 = window.ZydkaPlayer) == null ? void 0 : _a2.getCurrentIndex()) != null ? _b : -1;
+      shufflePlayed = currentIndex >= 0 ? [currentIndex] : [];
       refreshState();
     });
     repeatButton.addEventListener("click", () => {
-      cycleRepeatMode();
+      repeatMode = cycleRepeatMode(repeatMode);
       refreshState();
     });
     shareButton.addEventListener("click", () => {
@@ -4030,8 +4053,8 @@
       inlineQueueQuery.addListener(handleQueueViewportChange);
     }
     muteButton.addEventListener("click", () => {
-      var _a, _b;
-      if ((_a = window.ZydkaPlayer) == null ? void 0 : _a.isMuted()) {
+      var _a2, _b;
+      if ((_a2 = window.ZydkaPlayer) == null ? void 0 : _a2.isMuted()) {
         window.ZydkaPlayer.unmute();
       } else {
         (_b = window.ZydkaPlayer) == null ? void 0 : _b.mute();
@@ -4039,9 +4062,9 @@
       refreshState();
     });
     volumeSlider.addEventListener("input", () => {
-      var _a, _b;
+      var _a2, _b;
       const nextVolume = Number(volumeSlider.value);
-      (_a = window.ZydkaPlayer) == null ? void 0 : _a.setVolume(nextVolume);
+      (_a2 = window.ZydkaPlayer) == null ? void 0 : _a2.setVolume(nextVolume);
       if (nextVolume > 0 && ((_b = window.ZydkaPlayer) == null ? void 0 : _b.isMuted())) {
         window.ZydkaPlayer.unmute();
       }
@@ -4081,11 +4104,11 @@
     progress.addEventListener("pointercancel", cancelSeekGesture);
     progress.addEventListener("touchcancel", cancelSeekGesture);
     progress.addEventListener("keydown", (event) => {
-      var _a, _b;
+      var _a2, _b;
       const target = getKeyboardSeekTarget(
         event.key,
         event.shiftKey,
-        (_b = (_a = window.ZydkaPlayer) == null ? void 0 : _a.getCurrentTime()) != null ? _b : 0,
+        (_b = (_a2 = window.ZydkaPlayer) == null ? void 0 : _a2.getCurrentTime()) != null ? _b : 0,
         getSeekDuration()
       );
       if (target === null) return;
@@ -4129,6 +4152,7 @@
       mute: () => WordPressBridge.mute(),
       unmute: () => WordPressBridge.unmute(),
       isMuted: () => WordPressBridge.isMuted(),
+      onEnded: (listener) => WordPressBridge.onEnded(listener),
       state: () => {
         const { currentTrack, currentIndex, queue, status, isPlaying, position, duration, volume, muted, error } = WordPressBridge.state();
         return { currentTrack, currentIndex, queue, status, isPlaying, position, duration, volume, muted, error };

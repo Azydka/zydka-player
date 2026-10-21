@@ -215,6 +215,17 @@ Résultat :
 
 ## Changelog
 
+### 0.3.0 - consolidation
+
+- Enchaînement automatique : avec la répétition désactivée, le morceau suivant démarre à la fin du précédent et la lecture s'arrête après le dernier (auparavant, elle s'arrêtait après chaque morceau).
+- Shuffle : aucun morceau n'est rejoué avant que toute la file ait été écoutée ; ensuite arrêt (répétition désactivée) ou nouveau cycle (répétition de la file).
+- Fin de morceau gérée depuis l'événement audio `ended` (exposé en `window.ZydkaPlayer.onEnded`), et non plus par le rafraîchissement de l'interface que les navigateurs ralentissent écran verrouillé.
+- Lien partagé : `#track-<id>` sélectionne le morceau au chargement et au changement de hash, sans le lancer, amène le player à l'écran et le met brièvement en évidence. Nouvelle méthode `window.ZydkaPlayer.select(index)`.
+- Texte de partage « Artiste – Titre » (plus de mention Louis94 codée en dur).
+- Interface entièrement en français, compteur « 1 / 3 », ligne de debug « Status » supprimée, message d'erreur lisible (la cause technique reste dans la console).
+- Plus de morceau ni de valeurs de démonstration : un `[zydka_player]` sans `src` ou une `[zydka_playlist]` sans morceau valide n'affiche rien aux visiteurs et un avertissement aux éditeurs.
+- Règles de navigation de la file regroupées dans `src/queueNavigation.ts` ; 49 tests `node:test`.
+
 ### 0.2.1 - correctif mobile et écran verrouillé
 
 - Timeline en `input range` natif : tap et glisser au doigt, aperçu pendant le glisser, un seul seek au relâchement.

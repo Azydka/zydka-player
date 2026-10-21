@@ -48,12 +48,32 @@ Les branches sont empilées ; les fusionner dans cet ordre :
 
 Contrôles sur le ZIP : version `0.3.0` dans l'en-tête et la constante PHP, aucune occurrence de `louis94`, `Demo Track`, `Atelier Zydka` ni `Status: ` dans le bundle.
 
-## Avant le déploiement
+## Contrôles pré-déploiement (21/10/2026, lecture seule)
 
-À faire en lecture seule sur Louis94 :
+Aucun fichier, réglage ni contenu modifié sur Louis94.
 
-- vérifier qu'aucune page publique n'utilise `[zydka_player]` sans attribut `src` : en 0.3.0, ce shortcode n'affiche plus de morceau de démonstration ;
-- confirmer que `/demo-track/` est toujours rendu par le Manager (`data-source="manager-playlist"`).
+**`[zydka_player]` sans `src` : aucun usage trouvé.**
+
+- recherche dans les pages et articles publiés (API REST) : aucun `[zydka_player]` ; `[zydka_playlist]` uniquement sur `/demo-track/` (page 83) et `/test-zydka-player/` (page 12) ;
+- recherche dans les produits, blocs réutilisables et contenus du Manager (`zydka_track`, `zydka_catalog`) : aucun résultat ;
+- thème actif `louis94-theme` : 16 fichiers lus, aucune référence à Zydka ;
+- rendu des 14 URL publiques du sitemap : seules `/demo-track/` et `/test-zydka-player/` affichent un player, et chacun a un `src`.
+
+Contenu brut des deux pages :
+
+- page 83 : `[zydka_playlist id="97"]`, rendu par le Manager ;
+- page 12 : une playlist en shortcodes (2 `[zydka_track]`, chacun avec `src`), compatible 0.3.0, suivie de `[zydka_playlist id="76"]`, qui n'affiche rien aux visiteurs dès aujourd'hui (le Manager ne rend rien pour une playlist invalide ou vide). Comportement inchangé par la 0.3.0.
+
+Non couvert : brouillons et contenus privés (non accessibles en lecture seule), widgets (non lisibles sans exécuter de code sur le serveur ; aucun player n'apparaît dans le rendu public).
+
+**`/demo-track/` :**
+
+- HTTP 200, aucun cache de page détecté (pas de purge à prévoir) ;
+- ressources `zydka-player.css` et `zydka-player.js` en `?ver=0.2.1`, `front.css` du Manager en `?ver=0.5.0` ;
+- player rendu par le Manager : `data-source="manager-playlist"`, playlist 97 ;
+- 3 morceaux MP3 (id 90, 88, 92), tous avec cover, aucun `buyUrl` ;
+- les 3 fichiers audio répondent en HTTP 200 (`audio/mpeg`, `Accept-Ranges: bytes`) ;
+- liens de recette : `/demo-track/#track-90`, `#track-88`, `#track-92`.
 
 ## Procédure de déploiement (à valider au moment voulu)
 

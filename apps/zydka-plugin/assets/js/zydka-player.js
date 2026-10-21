@@ -2357,7 +2357,9 @@
       if (!this.howl) return 0;
       const duration = this.getDuration();
       const clamped = Math.max(0, duration > 0 ? Math.min(seconds, duration) : seconds);
-      this.howl.seek(clamped);
+      if (!this.seekActiveHtml5Node(clamped)) {
+        this.howl.seek(clamped);
+      }
       this.emit("seeked", { position: clamped });
       return clamped;
     }
@@ -2443,6 +2445,25 @@
       if (!this.howl) return 0;
       const position = this.howl.seek();
       return typeof position === "number" && Number.isFinite(position) ? position : 0;
+    }
+    seekActiveHtml5Node(seconds) {
+      var _a;
+      const sounds = (_a = this.howl) == null ? void 0 : _a._sounds;
+      const sound = sounds == null ? void 0 : sounds.find(
+        (candidate) => {
+          var _a2;
+          return Number.isFinite((_a2 = candidate._node) == null ? void 0 : _a2.currentTime);
+        }
+      );
+      if (!(sound == null ? void 0 : sound._node)) return false;
+      try {
+        sound._node.currentTime = seconds;
+        sound._seek = seconds;
+        sound._ended = false;
+        return true;
+      } catch (e) {
+        return false;
+      }
     }
     emit(event, payload) {
       this.listeners[event].forEach((listener) => {

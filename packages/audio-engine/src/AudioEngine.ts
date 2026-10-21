@@ -9,6 +9,16 @@ import type {
   AudioTrack,
 } from "./types";
 
+interface Html5SoundInternals {
+  _node?: { currentTime: number };
+  _seek?: number;
+  _ended?: boolean;
+}
+
+interface Html5HowlInternals {
+  _sounds?: Html5SoundInternals[];
+}
+
 export class AudioEngine {
   private howl: Howl | null = null;
   private currentTrack: AudioTrack | null = null;
@@ -132,7 +142,13 @@ export class AudioEngine {
     const duration = this.getDuration();
     const clamped = Math.max(0, duration > 0 ? Math.min(seconds, duration) : seconds);
 
-    this.howl.seek(clamped);
+    // Howler's HTML5 seek pauses and restarts playback. That restart can be rejected
+    // by iOS while the screen is locked, leaving the player silent and in error.
+    // Moving the already-authorized media element keeps the same playback session.
+    if (!this.seekActiveHtml5Node(clamped)) {
+      this.howl.seek(clamped);
+    }
+
     this.emit("seeked", { position: clamped });
 
     return clamped;
@@ -248,6 +264,24 @@ export class AudioEngine {
 
     const position = this.howl.seek();
     return typeof position === "number" && Number.isFinite(position) ? position : 0;
+  }
+
+  private seekActiveHtml5Node(seconds: number): boolean {
+    const sounds = (this.howl as (Howl & Html5HowlInternals) | null)?._sounds;
+    const sound = sounds?.find((candidate) =>
+      Number.isFinite(candidate._node?.currentTime),
+    );
+
+    if (!sound?._node) return false;
+
+    try {
+      sound._node.currentTime = seconds;
+      sound._seek = seconds;
+      sound._ended = false;
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   private emit<E extends AudioEngineEvent>(

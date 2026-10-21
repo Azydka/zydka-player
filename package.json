@@ -6,7 +6,7 @@
   "scripts": {
     "package:wp": "powershell -ExecutionPolicy Bypass -File scripts/package-zydka-plugin.ps1",
     "package:wp:manager": "powershell -ExecutionPolicy Bypass -File scripts/package-zydka-plugin.ps1 -Plugin manager",
-    "test": "pnpm --filter @zydka/zydka-plugin test"
+    "test": "pnpm --filter @zydka/audio-engine test && pnpm --filter @zydka/zydka-plugin test"
   },
   "keywords": [],
   "author": "",

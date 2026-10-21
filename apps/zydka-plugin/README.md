@@ -215,6 +215,12 @@ Résultat :
 
 ## Changelog
 
+### 0.3.1 - correctif seek écran verrouillé
+
+- Le déplacement dans un morceau depuis l'écran verrouillé conserve désormais le flux audio actif au lieu de le mettre en pause puis de tenter de le relancer.
+- Évite la coupure du son et l'état d'erreur qui pouvaient suivre un seek sur iPhone lorsque l'écran était verrouillé.
+- Deux tests de non-régression couvrent le seek direct et son repli Howler (51 tests au total).
+
 ### 0.3.0 - consolidation
 
 - Enchaînement automatique : avec la répétition désactivée, le morceau suivant démarre à la fin du précédent et la lecture s'arrête après le dernier (auparavant, elle s'arrêtait après chaque morceau).

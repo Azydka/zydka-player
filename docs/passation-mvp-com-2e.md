@@ -16,9 +16,15 @@
 - Produit 120 : `draft` / `hidden`.
 - `cheque`, `bacs`, `cod` : désactivés. Aucune extension Stripe, PayPal ou WooPayments installée.
 - `woocommerce_coming_soon=yes`, `woocommerce_store_pages_only=yes`.
-- Commandes : 116 (ancienne) et 127 (test MVP-COM-2E).
+- Commandes : 116 (ancienne) et 127 (test MVP-COM-2E, annulée).
 
 ## Attend une décision du propriétaire
 
-- **MVP-COM-2F-TEST-ORDER-CLEANUP** : annuler, conserver ou supprimer la commande 127. Rien n'a été fait dessus.
+- ~~MVP-COM-2F-TEST-ORDER-CLEANUP~~ : fait, 127 annulée (pas supprimée).
 - Optionnel : tester l'octroi des téléchargements en passant une commande test en `completed` (ce serait une modification de production à autoriser).
+
+## MVP-COM-2F (2026-10-23)
+
+- Le propriétaire a choisi d'annuler la commande 127, sans la supprimer.
+- Préflight lecture seule PASS, protocole prêt : `docs/mvp-com-2f-test-order-cleanup.md`.
+- Annulation exécutée et vérifiée après accord explicite : 127 `cancelled`, conservée. Branche fusionnée dans `main` puis supprimée.

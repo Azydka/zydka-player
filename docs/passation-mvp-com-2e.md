@@ -22,3 +22,9 @@
 
 - **MVP-COM-2F-TEST-ORDER-CLEANUP** : annuler, conserver ou supprimer la commande 127. Rien n'a été fait dessus.
 - Optionnel : tester l'octroi des téléchargements en passant une commande test en `completed` (ce serait une modification de production à autoriser).
+
+## MVP-COM-2F (2026-10-23)
+
+- Le propriétaire a choisi d'annuler la commande 127, sans la supprimer.
+- Préflight lecture seule PASS, protocole prêt : `docs/mvp-com-2f-test-order-cleanup.md`.
+- Annulation **non exécutée** : elle attend un accord explicite. Branche `docs/mvp-com-2f-test-order-cleanup`, non fusionnée.

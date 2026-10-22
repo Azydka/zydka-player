@@ -45,7 +45,7 @@ Tests validés sur le Xiaomi : seek pendant la lecture et pendant la pause, bout
 
 ## Suites possibles (à choisir avec le propriétaire)
 
-1. **Note de release 0.3.2** : rédiger `docs/zydka-player-0.3.2-release.md` sur le modèle de `docs/zydka-player-0.3.0-release.md`.
+1. ~~**Note de release 0.3.2**~~ : faite, voir `docs/zydka-player-0.3.2-release.md`.
 2. **Nettoyage de `wp-content/plugins/`** : d'anciennes sauvegardes y apparaissent comme extensions inactives (`zydka-player-backup-before-v061/v062/v063`, en versions 0.6.0 à 0.6.2, et quatre sauvegardes du Manager 0.3.0 à 0.4.1). Ces numéros 0.6.x sont supérieurs à 0.3.2 et prêtent à confusion. Il faut vérifier leur origine avant de les déplacer vers `plugin-backups/`. C'est une action en production, donc soumise à accord.
 3. **Robustesse Media Session** : `safeRun()` dans `apps/zydka-plugin/src/mediaSession.ts` avale toutes les exceptions sans trace. Un log activable en debug aiderait au prochain diagnostic sur appareil.
 4. **Couverture de test** : les tests simulent Howler et le handler Media Session. Un test plus proche du réel (navigateur headless avec un vrai `<audio>`) couvrirait le cas « seek en pause puis lecture ».

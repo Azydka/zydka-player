@@ -6,6 +6,20 @@ Plugin WordPress separe pour gerer le catalogue audio utilise par Zydka Player.
 
 La V0.4 ajoute `Zydka Player > Bibliotheque`, une interface centrale pour gerer les tracks et les playlists sans manipuler les shortcodes au quotidien.
 
+## V0.6 CTA d achat WooCommerce
+
+La V0.6 transforme le produit WooCommerce associe a une track (`_zydka_track_product_id`) en bouton d achat dans le Zydka Player.
+
+Comportement :
+
+- le payload de track (REST et shortcode) ajoute `buyUrl` (permalink du produit) et `buyLabel` (`Voir les licences`) ;
+- le CTA n apparait que si WooCommerce est actif et que l ID designe un produit (`product`) au statut `publish` ; un produit masque du catalogue reste accepte ;
+- dans tous les autres cas (pas d ID, WooCommerce absent, produit introuvable, variation ou autre type de contenu, brouillon, prive, corbeille, permalink invalide), `buyUrl` et `buyLabel` sont vides et la playlist fonctionne sans CTA ;
+- `[zydka_playlist id="123"]` transmet `buyUrl` et `buyLabel` dans `data-tracks`, et ceux de la premiere track dans `data-buy-url` et `data-buy-label` ;
+- le fallback HTML affiche un lien `Voir les licences` sous la track concernee ;
+- le CTA ouvre la page produit pour choisir la licence : aucun ajout direct au panier ;
+- aucune nouvelle meta, option ou table ; les shortcodes manuels du player (`buy_url`, `buy_label`) ne changent pas.
+
 ## V0.5 Zydka Player Front Bridge
 
 La V0.5 connecte `[zydka_playlist id="123"]` au vrai Zydka Player front.

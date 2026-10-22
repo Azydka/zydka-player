@@ -3,7 +3,7 @@
  * Plugin Name: Zydka Player Manager
  * Plugin URI:  https://louis94.com
  * Description: Catalogue audio, bibliotheque visuelle, playlists drag-and-drop et workflow admin guide pour Zydka Player.
- * Version:     0.5.0
+ * Version:     0.6.0
  * Author:      Atelier Zydka
  * Author URI:  https://louis94.com
  * Text Domain: zydka-player-manager
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'ZYDKA_PLAYER_MANAGER_VERSION', '0.5.0' );
+define( 'ZYDKA_PLAYER_MANAGER_VERSION', '0.6.0' );
 define( 'ZYDKA_PLAYER_MANAGER_FILE', __FILE__ );
 define( 'ZYDKA_PLAYER_MANAGER_PATH', plugin_dir_path( __FILE__ ) );
 define( 'ZYDKA_PLAYER_MANAGER_URL', plugin_dir_url( __FILE__ ) );

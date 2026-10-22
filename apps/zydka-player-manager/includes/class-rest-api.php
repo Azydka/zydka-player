@@ -117,6 +117,9 @@ final class Zydka_Player_Manager_REST_API {
 	 * @return array<string,mixed>
 	 */
 	public static function get_track_payload( int $track_id ): array {
+		$product_id = absint( get_post_meta( $track_id, '_zydka_track_product_id', true ) );
+		$buy_url    = self::get_product_buy_url( $product_id );
+
 		$payload = [
 			'id'               => $track_id,
 			'title'            => get_the_title( $track_id ),
@@ -130,11 +133,31 @@ final class Zydka_Player_Manager_REST_API {
 			'audioUrl'         => esc_url_raw( (string) get_post_meta( $track_id, '_zydka_track_audio_url', true ) ),
 			'downloadUrl'      => esc_url_raw( (string) get_post_meta( $track_id, '_zydka_track_download_url', true ) ),
 			'cover'            => Zydka_Player_Manager_Meta_Boxes::get_track_cover_url( $track_id ),
-			'productId'        => absint( get_post_meta( $track_id, '_zydka_track_product_id', true ) ),
+			'productId'        => $product_id,
+			'buyUrl'           => $buy_url,
+			'buyLabel'         => '' !== $buy_url ? __( 'Voir les licences', 'zydka-player-manager' ) : '',
 			'commercialStatus' => (string) get_post_meta( $track_id, '_zydka_track_commercial_status', true ),
 		];
 
 		return apply_filters( 'zydka_player_manager_track_payload', $payload, $track_id );
+	}
+
+	/**
+	 * Return the permalink of a published WooCommerce product, or '' when no CTA should be shown.
+	 *
+	 * Catalog visibility is ignored on purpose: a hidden product keeps a valid direct link.
+	 */
+	public static function get_product_buy_url( int $product_id ): string {
+		if ( $product_id <= 0 || ! function_exists( 'wc_get_product' ) || 'product' !== get_post_type( $product_id ) ) {
+			return '';
+		}
+
+		$product = wc_get_product( $product_id );
+		if ( ! $product || ! is_a( $product, 'WC_Product' ) || 'publish' !== $product->get_status() ) {
+			return '';
+		}
+
+		return esc_url_raw( (string) $product->get_permalink(), [ 'http', 'https' ] );
 	}
 
 	/**

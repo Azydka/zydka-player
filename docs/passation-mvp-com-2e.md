@@ -2,21 +2,23 @@
 
 ## État du dépôt
 
-- `main` = `origin/main` = `a4cd462` au départ.
-- Branche de travail : `docs/mvp-com-2e-preflight-20261023`, non fusionnée.
+- Départ : `main` = `origin/main` = `a4cd462`.
+- Travail fait sur `docs/mvp-com-2e-preflight-20261023`, fusionné dans `main` avec `--no-ff`, puis branche supprimée.
+- Aucun code, aucune version et aucun ZIP du lecteur modifiés.
 
 ## Fait
 
-- 2026-10-23 : nouveau préflight lecture seule, **PASS**, aucun écart. Voir `docs/mvp-com-2e-preflight-readonly-pass-2026-10-23.md`.
-- Aucune modification en production.
+- 2026-10-23 : préflight lecture seule, **PASS**, aucun écart. Voir `docs/mvp-com-2e-preflight-readonly-pass-2026-10-23.md`.
+- 2026-10-23 : run contrôlé, **PASS**, après accord explicite du propriétaire. Commande test **127** (`on-hold`, 29,00 EUR, chèque, variation 121). Rollback fait et vérifié. Voir `docs/mvp-com-2e-checkout-controlled-run-result.md`.
 
-## Constat utile pour le run
+## État de production laissé
 
-- Aucune extension Stripe, PayPal ou WooPayments n'est installée. Seules `bacs`, `cheque`, `cod` existent, toutes désactivées.
-- HPOS actif. Une seule commande existante (`#116`).
+- Produit 120 : `draft` / `hidden`.
+- `cheque`, `bacs`, `cod` : désactivés. Aucune extension Stripe, PayPal ou WooPayments installée.
+- `woocommerce_coming_soon=yes`, `woocommerce_store_pages_only=yes`.
+- Commandes : 116 (ancienne) et 127 (test MVP-COM-2E).
 
 ## Attend une décision du propriétaire
 
-- GO ou NO-GO pour la phase 2 (`docs/mvp-com-2e-checkout-controlled-run-protocol.md`).
-- Si GO : la phase 2 se fait sur cette même branche, puis fusion `--no-ff` dans `main`.
-- Si une commande test est créée : jalon séparé MVP-COM-2F-TEST-ORDER-CLEANUP.
+- **MVP-COM-2F-TEST-ORDER-CLEANUP** : annuler, conserver ou supprimer la commande 127. Rien n'a été fait dessus.
+- Optionnel : tester l'octroi des téléchargements en passant une commande test en `completed` (ce serait une modification de production à autoriser).

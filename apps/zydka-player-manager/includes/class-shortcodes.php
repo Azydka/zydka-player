@@ -118,6 +118,8 @@ final class Zydka_Player_Manager_Shortcodes {
 			'data-src'         => (string) ( $first_track['audioUrl'] ?? '' ),
 			'data-cover'       => (string) ( $first_track['cover'] ?? '' ),
 			'data-download-url' => (string) ( $first_track['downloadUrl'] ?? '' ),
+			'data-buy-url'     => (string) ( $first_track['buyUrl'] ?? '' ),
+			'data-buy-label'   => (string) ( $first_track['buyLabel'] ?? '' ),
 			'data-tracks'      => wp_json_encode( $tracks, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ),
 		];
 
@@ -161,6 +163,8 @@ final class Zydka_Player_Manager_Shortcodes {
 				'src'         => $audio_url,
 				'cover'       => esc_url_raw( (string) ( $track['cover'] ?? '' ) ),
 				'downloadUrl' => esc_url_raw( (string) ( $track['downloadUrl'] ?? '' ) ),
+				'buyUrl'      => esc_url_raw( (string) ( $track['buyUrl'] ?? '' ), [ 'http', 'https' ] ),
+				'buyLabel'    => sanitize_text_field( (string) ( $track['buyLabel'] ?? '' ) ),
 				'type'        => sanitize_text_field( (string) ( $track['type'] ?? '' ) ),
 				'bpm'         => absint( $track['bpm'] ?? 0 ),
 				'mood'        => sanitize_text_field( (string) ( $track['mood'] ?? '' ) ),
@@ -196,6 +200,8 @@ final class Zydka_Player_Manager_Shortcodes {
 				$artist      = (string) ( $track['artist'] ?? '' );
 				$audio_url   = esc_url_raw( (string) ( $track['audioUrl'] ?? '' ) );
 				$cover_url   = esc_url_raw( (string) ( $track['cover'] ?? '' ) );
+				$buy_url     = (string) ( $track['buyUrl'] ?? '' );
+				$buy_label   = (string) ( $track['buyLabel'] ?? '' );
 				$track_title = (string) ( $track['title'] ?? sprintf( __( 'Track #%d', 'zydka-player-manager' ), $track_id ) );
 				?>
 				<article class="zydka-manager-track" data-track-id="<?php echo esc_attr( (string) $track_id ); ?>">
@@ -212,6 +218,9 @@ final class Zydka_Player_Manager_Shortcodes {
 							<p class="zydka-manager-track-artist"><?php echo esc_html( $artist ); ?></p>
 						<?php endif; ?>
 						<audio controls preload="none" src="<?php echo esc_url( $audio_url ); ?>"></audio>
+						<?php if ( $buy_url ) : ?>
+							<a class="zydka-manager-track-buy" href="<?php echo esc_url( $buy_url ); ?>"><?php echo esc_html( $buy_label ? $buy_label : __( 'Voir les licences', 'zydka-player-manager' ) ); ?></a>
+						<?php endif; ?>
 					</div>
 				</article>
 			<?php endforeach; ?>

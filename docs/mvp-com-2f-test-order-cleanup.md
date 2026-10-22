@@ -2,9 +2,9 @@
 
 Date : 2026-10-23
 
-Statut : **PREFLIGHT PASS / CANCELLATION NOT RUN**
+Statut : **PASS — commande 127 annulée, conservée**
 
-Décision du propriétaire : annuler la commande test 127 (statut `cancelled`), **sans suppression**. Préparation seulement : l'exécution attend un accord explicite séparé.
+Décision du propriétaire : annuler la commande test 127 (statut `cancelled`), **sans suppression**. Exécution autorisée explicitement par le propriétaire le 2026-10-23.
 
 ## Contexte
 
@@ -71,3 +71,22 @@ L'e-mail « Commande annulée » envoyé à l'administrateur ne peut pas être r
 - PASS : 127 `cancelled`, conservée, vérifications OK
 - NO-GO : écart au préflight d'exécution, rien modifié
 - ROLLBACK : statut inattendu, remis à `on-hold`
+
+## Exécution (2026-10-22 23:20 UTC)
+
+- 23:20:37 : revérification, 127 `on-hold`
+- 23:20:57 : `wp wc shop_order update 127 --status=cancelled --user=1` → `127`
+
+## Vérification
+
+- 127 : `status=cancelled`, total 29.00 inchangé, date_modified 2026-10-22T23:20:57
+- notes ajoutées : « État de la commande modifié de En attente à Annulée. » et « E-mail « Commande annulée » envoyé. » (à l'administrateur)
+- `wpcq_wc_orders` : 116 `wc-completed` (inchangée), 127 `wc-cancelled`, toujours présente
+- permissions de téléchargement pour 127 : 0
+- produit 120 `draft` / `hidden`, `woocommerce_coming_soon=yes`, passerelles `bacs`, `cheque`, `cod` désactivées
+
+Rollback : non nécessaire.
+
+## Décision
+
+MVP-COM-2F-TEST-ORDER-CLEANUP : **PASS**. La commande 127 est annulée et conservée comme trace du test. Sa suppression définitive demanderait une nouvelle décision explicite.

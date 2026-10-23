@@ -58,6 +58,12 @@ Le connecteur Novamira utilisé dans les passations précédentes n’est pas di
 
 Cette limite n’autorise aucune supposition. Un champ non vérifié devient un critère NO-GO avant lancement.
 
+### Relecture privée complémentaire (2026-10-23)
+
+Le même jour, une autre session disposant du profil Novamira `www.louis94.com` a relu en production, **en lecture seule**, les champs privés marqués « à relire » ou « non vérifié ». Méthode : `wp eval` via `novamira/run-wp-cli`, qui n’appelle que des accesseurs WooCommerce et des `SELECT` ; s’y ajoute un `GET` anonyme sur un fichier de test. Aucune écriture, aucun `wp cache flush`, aucune commande ni aucun checkout. Les sections 3, 5, 6 et 8 intègrent ces valeurs, marquées **relu en privé le 2026-10-23**.
+
+Le contexte WP-CLI n’a pas d’utilisateur connecté. `is_purchasable()` y renvoie donc `false` pour les trois variations, car leur parent est en `draft`. C’est cohérent avec la mention « achetable selon l’API privée » obtenue précédemment avec un utilisateur administrateur : la variation est complète, mais ne peut pas être achetée par le public.
+
 ## 1. Inventaire des tracks
 
 La production expose trois tracks publiques. Elles appartiennent toutes à la playlist 97 « Test 1 » et n’ont aucun produit lié.
@@ -124,22 +130,31 @@ Il s’agit d’un modèle technique, pas d’un produit commercial final.
 | Nom de licence | `Basic` | `Standard` | `Premium` |
 | Prix | 29 EUR | 99 EUR | 299 EUR |
 | SKU | `MVP-MEMOIRE-VIVE-BASIC` | `MVP-MEMOIRE-VIVE-STANDARD` | `MVP-MEMOIRE-VIVE-PREMIUM` |
-| Statut | `publish` au niveau variation, relu le 2026-10-23 | existence confirmée historiquement ; statut actuel à relire | existence confirmée historiquement ; statut actuel à relire |
-| Attribut | attribut produit custom `Licence=Basic`, relu | `Licence=Standard` issu de la création ; à relire | `Licence=Premium` issu de la création ; à relire |
-| Virtuel | `true`, relu | `true`, historique | `true`, historique |
-| Téléchargeable | `true`, relu | `true`, historique | `true`, historique |
-| Fichier | `louis94-memoire-vive-basic-test.txt` ; factice | `louis94-memoire-vive-standard-test.txt` ; factice | `louis94-memoire-vive-premium-test.txt` ; factice |
-| Libellé de téléchargement | `Licence Basic - fichier test`, relu | non relu | non relu |
-| Limite | 5 téléchargements | 5, historique | 5, historique |
-| Expiration | 30 jours | 30 jours, historique | 30 jours, historique |
-| Stock | `in_stock=true`, `manage_stock=false` | `in_stock=true`, historique ; gestion de stock à relire | `in_stock=true`, historique ; gestion de stock à relire |
-| Achetable | `true`, relu | `true`, historique | `true`, historique |
-| Prix promo | vide, relu | à relire | à relire |
-| Statut fiscal | **non vérifié** | **non vérifié** | **non vérifié** |
-| Classe fiscale | **non vérifiée** | **non vérifiée** | **non vérifiée** |
+| Statut | `publish` au niveau variation | `publish` | `publish` |
+| Attribut | `licence=Basic` | `licence=Standard` | `licence=Premium` |
+| Virtuel | `true` | `true` | `true` |
+| Téléchargeable | `true` | `true` | `true` |
+| Fichier | `woocommerce_uploads/louis94-memoire-vive-basic-test.txt`, 34 octets, présent ; factice | `woocommerce_uploads/louis94-memoire-vive-standard-test.txt`, 37 octets, présent ; factice | `woocommerce_uploads/louis94-memoire-vive-premium-test.txt`, 36 octets, présent ; factice |
+| Libellé de téléchargement | `Licence Basic - fichier test`, activé | `Licence Standard - fichier test`, activé | `Licence Premium - fichier test`, activé |
+| Limite | 5 téléchargements | 5 | 5 |
+| Expiration | 30 jours | 30 jours | 30 jours |
+| Stock | `instock`, `manage_stock=false` | `instock`, `manage_stock=false` | `instock`, `manage_stock=false` |
+| Achetable | `false` en contexte public (parent `draft`) ; `true` lu précédemment en admin | idem | idem |
+| Prix promo | vide | vide | vide |
+| Statut fiscal | `taxable` | `taxable` | `taxable` |
+| Classe fiscale | `parent`, donc classe standard (`''`) du parent | `parent`, donc standard | `parent`, donc standard |
+| Dernière modification | 2026-06-29 11:52 UTC | 2026-06-29 11:52 UTC | 2026-06-29 11:52 UTC |
 | État commercial | **factice / incomplet** | **factice / incomplet** | **factice / incomplet** |
 
-Le produit parent est `draft`, donc ces variations ne sont pas actuellement vendables au public même si certaines propriétés individuelles indiquent `purchasable=true`.
+Toutes les valeurs de ce tableau ont été **relues en privé le 2026-10-23**, sauf le nom de licence, le prix et le SKU, qui étaient déjà connus et ont été confirmés.
+
+Parent 120 : `variable`, `draft`, visibilité `hidden`, slug `mvp-test-beat-memoire-vive`, SKU parent vide, `taxable`, classe standard. Attribut custom `Licence` (`Basic`, `Standard`, `Premium`), utilisé pour les variations et visible. Dernière modification le 2026-10-22 à 23:13 UTC.
+
+Le produit parent est `draft` : ces variations ne sont donc pas vendables au public.
+
+Statut fiscal et classe ne sont que des valeurs par défaut. Le calcul des taxes est désactivé et aucun taux n’existe (section 6). `taxable` n’a donc aujourd’hui aucun effet : la décision fiscale reste entière.
+
+Contrôle d’accès aux fichiers : `woocommerce_uploads/.htaccess` contient `deny from all` et un `index.html` est présent. Un `GET` anonyme direct sur le fichier Basic répond 404 : le fichier n’est pas servi publiquement.
 
 ### Éléments prêts
 
@@ -149,7 +164,8 @@ Le produit parent est `draft`, donc ces variations ne sont pas actuellement vend
 - variations virtuelles et téléchargeables ;
 - règles techniques de limite et d’expiration ;
 - dossier `woocommerce_uploads` accepté par WooCommerce ;
-- table des permissions de téléchargement présente lors du dernier préflight privé ;
+- table des permissions de téléchargement présente (relu en privé le 2026-10-23), 0 permission pour les produits 120 à 123 ;
+- dossier `woocommerce_uploads` protégé (`deny from all`, accès anonyme direct en 404) ;
 - ajout au panier et checkout Basic déjà éprouvés.
 
 ### Éléments factices ou incomplets
@@ -160,8 +176,8 @@ Le produit parent est `draft`, donc ces variations ne sont pas actuellement vend
 - aucun texte de licence n’est joint ;
 - aucun visuel produit réel ;
 - Standard et Premium n’ont pas été testées de bout en bout ;
-- statut et classe fiscale non vérifiés ;
-- contenu réel des fichiers et contrôle d’accès non validés ;
+- statut et classe fiscale relus, mais aux valeurs par défaut (`taxable`, standard), sans calcul de taxe actif ;
+- fichiers réels absents ; la protection du dossier est relue, mais le contrôle d’accès par permission n’a pas été testé de bout en bout ;
 - aucune permission de téléchargement n’a été créée pour la commande 127.
 
 ## 4. Réutiliser 120 ou créer un produit réel
@@ -190,15 +206,15 @@ Créer un nouveau produit réel en `draft` / `hidden`, en utilisant 120 comme ch
 | Droits accordés | non définis | bloquant |
 | Restrictions | non définies | bloquant |
 | Preuve des droits sur l’audio et la cover | non documentée | bloquant prioritaire |
-| Politique de remboursement / retours | page 112 créée en `draft` lors du setup ; aucune page publique correspondante aujourd’hui | bloquant |
-| CGV | aucune page publique identifiée | bloquant |
-| Politique de confidentialité | aucune page publique identifiée | bloquant |
-| Mentions légales | aucune page publique identifiée | bloquant |
+| Politique de remboursement / retours | page 112 « Refund and Returns Policy » en `draft`, modèle WooCommerce par défaut en anglais (relu en privé le 2026-10-23) | bloquant |
+| CGV | aucune page, même en brouillon ; `woocommerce_terms_page_id` vide (relu en privé le 2026-10-23) | bloquant |
+| Politique de confidentialité | page 3 « Privacy Policy » en `draft`, désignée comme page de confidentialité WordPress (relu en privé le 2026-10-23) | bloquant |
+| Mentions légales | aucune page, même en brouillon (relu en privé le 2026-10-23) | bloquant |
 | Contact commercial | aucune page publique identifiée ; seul le nom Louis94 apparaît dans le footer | bloquant |
 | Médiation / litiges | non documenté | à faire valider |
-| Consentement CGV au checkout | non observé et non vérifié | NO-GO |
-| Consentement contenu numérique / exécution immédiate | non observé et non vérifié | NO-GO |
-| Reconnaissance de perte du droit de rétractation | non observée et non vérifiée | NO-GO |
+| Consentement CGV au checkout | checkout en blocs (page 110) avec le bloc `checkout-terms-block` sans attribut, donc sans case à cocher ; aucune page CGV configurée ; la page de confidentialité ciblée est en brouillon ; textes de confidentialité WooCommerce par défaut, en anglais (relu en privé le 2026-10-23) | NO-GO |
+| Consentement contenu numérique / exécution immédiate | aucun réglage ni bloc dédié dans la configuration WooCommerce cœur relue | NO-GO |
+| Reconnaissance de perte du droit de rétractation | aucun réglage ni bloc dédié dans la configuration WooCommerce cœur relue | NO-GO |
 | Confirmation durable de ces consentements | non vérifiée dans l’e-mail ou la commande | NO-GO |
 
 ### Points à faire valider professionnellement
@@ -226,20 +242,21 @@ Sources officielles consultées :
 | Domaine | Fait vérifié | État avant vente |
 | --- | --- | --- |
 | Devise | EUR | prêt techniquement |
-| Pays par défaut | FR | prêt techniquement, zones de vente à décider |
-| Taxes | pas de TVA configurée lors du setup ; commande 127 à taxe 0,00 | **bloquant**, décision comptable/fiscale puis relecture privée |
+| Pays par défaut | FR ; ventes ouvertes à tous les pays (`woocommerce_allowed_countries=all`, relu en privé le 2026-10-23) | prêt techniquement, zones de vente à décider |
+| Taxes | relu en privé le 2026-10-23 : `woocommerce_calc_taxes=no` ; 0 taux de taxe ; classes `reduced-rate` et `zero-rate` (sans taux) ; prix saisis HT (`prices_include_tax=no`) ; taxe basée sur l’adresse de livraison ; affichage HT en boutique et au panier ; commande 127 à taxe 0 | **bloquant**, décision comptable/fiscale à prendre, puis configuration des taux, de la base de calcul (facturation plutôt que livraison pour un produit numérique) et de l’affichage TTC à arbitrer |
 | Boutique | page 108 publiée, HTTP 200 | prête techniquement |
 | Panier | page 109 publiée, HTTP 200 ; Coming Soon servi | prête techniquement |
 | Checkout | page 110 publiée ; panier vide redirigé vers le panier | prête techniquement, contenus/consentements à valider |
 | Mon compte | page 111 publiée, HTTP 200 | page présente ; inscription non affichée publiquement |
-| Création de compte | commande 127 passée en invité (`customer_id=0`) ; My account affiche uniquement la connexion | stratégie à décider et option checkout à relire |
-| Méthode de téléchargement | `force`, dernière preuve privée historique | à relire avant test |
-| Accès après paiement | `yes`, dernière preuve privée historique | à relire avant test |
+| Création de compte | relu en privé le 2026-10-23 : commande invité autorisée (`enable_guest_checkout=yes`) ; pas de rappel de connexion au checkout ; pas de création de compte au checkout ; pas d’inscription depuis Mon compte ; nom d’utilisateur et mot de passe générés automatiquement si l’inscription est activée ; commande 127 en invité (`customer_id=0`) | parcours actuel : **invité uniquement**, téléchargements accessibles par e-mail et page de confirmation ; stratégie à décider |
+| Méthode de téléchargement | `force`, ajout d’un hash au nom de fichier (`add_hash_to_filename=yes`), pas de repli par redirection, téléchargements partiels comptés (relu en privé le 2026-10-23) | prêt techniquement |
+| Accès après paiement | `grant_access_after_payment=yes` ; connexion non requise pour télécharger (`downloads_require_login=no`, cohérent avec le parcours invité) (relu en privé le 2026-10-23) | prêt techniquement ; à revoir si des comptes sont imposés |
 | Limites / expiration | 5 / 30 jours sur le modèle | décision commerciale à confirmer |
 | E-mails de commande | e-mails admin et client déclenchés lors du run 127 ; adresse client factice non délivrable | mécanisme déclenché, contenu et délivrabilité non validés |
 | E-mail de téléchargement | jamais validé avec 120 | manquant |
 | Téléchargement réel | jamais validé avec un fichier commercial | manquant |
-| HPOS | actif ; tables critiques présentes au dernier préflight privé | prêt, à relire avant écriture |
+| HPOS | relu en privé le 2026-10-23 : `custom_orders_table_enabled=yes`, HPOS stockage de référence (`OrderUtil`), synchronisation de compatibilité désactivée (option absente) ; tables `wc_orders`, `wc_orders_meta`, `wc_order_addresses`, `wc_order_operational_data` et `woocommerce_downloadable_product_permissions` présentes ; commande 127 `cancelled`, 29,00 EUR, taxe 0, `customer_id=0`, 0 permission | prêt ; à relire de nouveau juste avant toute écriture |
+| Passerelles | relu en privé le 2026-10-23 : seules `bacs`, `cheque` et `cod` sont enregistrées, toutes désactivées | aucune passerelle utilisable |
 | Coming Soon | `yes`, `store_pages_only=yes` | état sûr actuel |
 | Catalogue | produit 115 public ; produit 120 `draft` / `hidden` ; aucune track liée | aucun produit réel prêt |
 | Permaliens | pages WooCommerce et endpoints publics répondent ; slug du futur produit non décidé | base prête |
@@ -285,14 +302,14 @@ Aucune installation, connexion, activation ou configuration n’a été exécut�
 
 1. **Droits audio/cover non établis.** Les tracks visibles portent des références Anderson .Paak. Aucun contenu ne doit être vendu sans chaîne de droits validée.
 2. **Licences inexistantes.** Aucun droit accordé ni restriction n’est défini.
-3. **Cadre consommateur incomplet.** CGV, confidentialité, mentions légales, remboursement et consentements numériques absents/non vérifiés.
+3. **Cadre consommateur incomplet.** Relu en privé le 2026-10-23 : pas de CGV ni de mentions légales, même en brouillon ; confidentialité (page 3) et remboursement (page 112) en brouillon, modèles par défaut ; aucun consentement CGV à cocher ni consentement propre au contenu numérique au checkout.
 4. **Fiscalité non décidée.** Aucun lancement tant que TVA, pays de vente et classes fiscales ne sont pas validés.
 5. **Aucun vrai fichier de livraison.** Les trois téléchargements sont des `.txt` factices.
 
 ### P1 — bloque le test de bout en bout
 
 1. aucune passerelle sandbox installée ;
-2. statut/classe fiscale et certains champs des variations 122/123 non relus ;
+2. taxes désactivées et aucun taux configuré (champs des variations 121–123 relus en privé le 2026-10-23 : complets, statut fiscal et classe aux valeurs par défaut) ;
 3. e-mail de téléchargement et délivrabilité non validés ;
 4. permission de téléchargement, fichier réel et espace Mon compte non validés ;
 5. stratégie compte invité/compte client non décidée ;
@@ -479,3 +496,5 @@ Toutes les opérations ci-dessous sont **non autorisées par ce préflight** et 
 - aucune commande créée ;
 - aucun paiement effectué ;
 - documentation Git uniquement.
+
+La relecture privée complémentaire du 2026-10-23 a été faite en lecture seule et respecte les mêmes limites : aucune écriture, aucun vidage de cache.

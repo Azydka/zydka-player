@@ -40,6 +40,21 @@ Livrable principal : `docs/mvp-com-3-first-commercial-beat-preflight.md`.
 
 Le connecteur privé Novamira n’était pas exposé dans cette session et aucune session navigateur authentifiée n’était ouverte. Les dernières lectures privées documentées du 2026-10-23 ont été recoupées avec des lectures HTTP publiques actuelles. Tous les champs privés non couverts sont explicitement marqués « à relire » ou « non vérifié » dans le rapport.
 
+### Relecture privée complémentaire (2026-10-23, lecture seule)
+
+Une autre session avait accès au profil Novamira `www.louis94.com`. Elle a relu ces champs avec `wp eval`, uniquement par des accesseurs et des `SELECT`, sans écriture ni vidage de cache. Branche : `docs/mvp-com-3-private-reread`. Le rapport est complété en sections 3, 5, 6 et 8.
+
+Ce qui change par rapport aux hypothèses :
+
+- variations 121–123 : toutes `publish`, attributs `Basic`/`Standard`/`Premium`, virtuelles, téléchargeables, 5 téléchargements, 30 jours, `instock` sans gestion de stock, sans prix promo, `taxable`, classe héritée du parent (standard). Fichiers `.txt` présents dans `woocommerce_uploads` (34, 37 et 36 octets). Dossier protégé par `deny from all` ; un accès anonyme direct répond 404 ;
+- fiscalité : calcul des taxes désactivé, 0 taux, prix HT, taxe basée sur la livraison ; ventes ouvertes à tous les pays ;
+- téléchargements : `force`, hash dans le nom de fichier, accès accordé après paiement, connexion non requise ;
+- comptes : checkout invité uniquement (pas de création de compte au checkout ni d’inscription dans Mon compte) ;
+- HPOS : actif et faisant référence, synchronisation désactivée, tables présentes ; commande 127 `cancelled`, 0 permission ;
+- juridique : aucune page CGV ni mentions légales ; confidentialité (page 3) et remboursement (page 112) en brouillon ; bloc des conditions au checkout présent mais sans case à cocher, aucune page CGV configurée.
+
+Le verdict reste **NO-GO commercial**. Restent non vérifiables sans commande réelle : la confirmation durable des consentements dans l’e-mail ou la commande.
+
 ## Décisions attendues
 
 Le propriétaire doit choisir :

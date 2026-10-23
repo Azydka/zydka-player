@@ -142,7 +142,19 @@ Déroulé :
 4. Restauration : `wp post meta delete 88 _zydka_track_product_id`, puis `wp cache flush`.
 5. Relecture après restauration : méta absente, 0 ligne en base, aucune liaison produit sur le site, `post_modified_gmt` inchangé, mêmes 8 clés de méta, payload REST identique à la sauvegarde. REST `playlist/97` revenu à trois `buyUrl` vides ; `/demo-track/` sans aucune trace de `buy`.
 
-Résultat : CTA validé en conditions réelles. L'état de production est identique à celui d'avant le test.
+Résultat : CTA validé en conditions réelles. L'état de production est identique à celui d'avant le test. Le CTA reste donc volontairement invisible en production tant qu'aucune track n'est liée à un produit.
+
+### Validations `AGENTS.md` (écart de procédure corrigé)
+
+Le commit documentaire de ce test (`06c1061`, fusionné en `d46b1c5`) a été fusionné sans lancer les trois validations imposées par `AGENTS.md` avant toute fusion. Elles ont été exécutées après coup sur `main` = `d46b1c5`, le 23/10/2026 :
+
+| Commande | Résultat |
+|---|---|
+| `pnpm test` | OK (exit 0) : audio-engine 3/3, zydka-plugin 49/49 |
+| `pnpm --filter @zydka/zydka-plugin typecheck` | OK (exit 0) |
+| `pnpm package:wp` | OK (exit 0) : build tsup, `dist/zydka-player.zip` recréé |
+
+Comme lors du développement de la 0.6.0, `package:wp` a réécrit `assets/js/zydka-player.js` en LF sans changer son contenu (diff vide hors espaces, SHA-256 sans CR `3955520D…2567`, celui de la 0.3.2). Le fichier a été remis à l'état du dépôt et `dist/zydka-player.zip` remplacé par `dist/zydka-player-0.3.2.zip` (SHA-256 `3E50BA4A…7B85`).
 
 ## Reste / décisions
 

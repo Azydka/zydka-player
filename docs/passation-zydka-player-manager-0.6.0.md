@@ -113,11 +113,38 @@ Fait par le CLI Novamira (profil `www.louis94.com`), selon la procédure ci-dess
    - `/test-zydka-player/` (shortcode manuel) : HTTP 200, `data-buy-url` manuel toujours présent ;
    - REST `playlist/97` : 3 tracks, `buyUrl`/`buyLabel` vides ; `playlist/76` répond 403 « Playlist non publique », comme avant.
 
-Non vérifié en production : l'affichage réel du bouton `Voir les licences`, car aucune track n'est liée à un produit publié. Lier une track au produit 115, ou publier le 120, serait une modification de données à autoriser séparément.
+Le bouton `Voir les licences` n'était pas vérifié à ce stade : il l'a été ensuite par le test temporaire ci-dessous.
 
 Rollback : `wp plugin install` depuis une archive de la sauvegarde ci-dessus, ou recopie du dossier sauvegardé, puis `wp cache flush`.
 
+## Validation fonctionnelle du CTA (23/10/2026, accord explicite du propriétaire)
+
+Test temporaire en production : la track 88 a été liée au produit 115, puis restaurée. Aucune autre modification en production.
+
+Préflight (lecture seule) :
+
+- Manager 0.6.0 et Player 0.3.2 actifs ; WooCommerce 11.2.1 actif ; pas de cache objet externe.
+- Playlist 97 (« Test 1 », publiée, page `/demo-track/`) : tracks 90, 88, 92 dans cet ordre, toutes publiées. Aucune n'avait de méta `_zydka_track_product_id` (ligne absente, pas `0`) ; aucune track du site n'avait de valeur non nulle.
+- Produit 115 « Louis94 Test Download — MVP » : `product` / `simple`, `publish`, visibilité `visible`, achetable ; permalink `https://www.louis94.com/product/louis94-test-download-mvp/`.
+- Track 88 choisie : elle n'appartient qu'à la playlist 97 (la 90 est aussi dans la 76) et sa position centrale permet de vérifier l'apparition et la disparition du CTA dans les deux sens.
+
+Déroulé :
+
+1. Sauvegarde de l'état de la track 88 (méta absente, 0 ligne en base, `post_modified_gmt` `2026-06-26 12:15:54`, 8 clés de méta, payload REST complet) dans un fichier local hors dépôt.
+2. `wp post meta add 88 _zydka_track_product_id 115` (meta_id 330), puis `wp cache flush`.
+3. Contrôles avec la liaison :
+   - REST `playlist/97` : la track 88 porte `productId` 115, `buyUrl` = permalink du produit, `buyLabel` `Voir les licences` ; 90 et 92 restent vides ;
+   - `/demo-track/` (HTML) : seule l'entrée 88 de `data-tracks` porte `buyUrl`/`buyLabel` ; lien de fallback `<a class="zydka-manager-track-buy">Voir les licences</a>` présent ; pas de `data-buy-url` sur le conteneur, car la première track n'est pas liée (comportement prévu) ; `front.css?ver=0.6.0`, `zydka-player.js?ver=0.3.2` ;
+   - navigateur, desktop : bouton `Voir les licences` visible sur la track 88 uniquement, `href` vers le produit, `target="_blank"`, `rel="noopener noreferrer"`. Il suit la track active : Next 90→88 (apparaît), Next 88→92 (disparaît), Previous 92→88 (réapparaît), Previous 88→90 (disparaît) ; sélection directe dans la liste « À suivre » 92 (absent), 88 (présent), 90 (absent) ;
+   - navigateur, mobile 375 px : bouton « À suivre (3) », sélection de la 88 dans le panneau de file → bouton visible avec le bon lien ;
+   - page produit : HTTP 200 ;
+   - non-régression : `/test-zydka-player/` garde son CTA manuel (`Voir le projet`, `https://www.louis94.com/`) ; `playlist/76` répond toujours 403.
+4. Restauration : `wp post meta delete 88 _zydka_track_product_id`, puis `wp cache flush`.
+5. Relecture après restauration : méta absente, 0 ligne en base, aucune liaison produit sur le site, `post_modified_gmt` inchangé, mêmes 8 clés de méta, payload REST identique à la sauvegarde. REST `playlist/97` revenu à trois `buyUrl` vides ; `/demo-track/` sans aucune trace de `buy`.
+
+Résultat : CTA validé en conditions réelles. L'état de production est identique à celui d'avant le test.
+
 ## Reste / décisions
 
-- Tester le bouton sur une vraie track liée à un produit publié (modification de données, à autoriser).
+- Lier durablement des tracks à leurs produits quand le catalogue commercial sera prêt (modification de données, à autoriser).
 - Optionnel : styler `.zydka-manager-track-buy` dans `front.css` (le lien du fallback utilise le style par défaut du thème).

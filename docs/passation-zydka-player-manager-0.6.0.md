@@ -1,7 +1,7 @@
 # Passation — Zydka Player Manager 0.6.0 (CTA d'achat WooCommerce)
 
 Date : 23/10/2026
-Statut : **prêt, non déployé**. La production reste en Manager 0.5.0 et Player 0.3.2.
+Statut : **déployé le 23/10/2026** sur www.louis94.com, après accord explicite du propriétaire (voir « Déploiement du 23/10/2026 »). Le Player reste en 0.3.2.
 
 ## État du dépôt
 
@@ -81,9 +81,9 @@ Aucun framework de test PHP n'existe pour le Manager et PHP n'est pas installé 
 - Le `dist/zydka-player.zip` reconstruit ne différait de la 0.3.2 que par les fins de ligne CRLF de `zydka-player.php` (copie de travail en `core.autocrlf=true`). Il a été remplacé par `dist/zydka-player-0.3.2.zip` ; SHA-256 de nouveau `3E50BA4A…7B85`.
 - Aucun artefact Player n'est dans la branche.
 
-## Aucun déploiement
+## Avant le déploiement
 
-Rien n'a été envoyé ni modifié sur www.louis94.com, ni dans WooCommerce. Le produit test 120 reste en `draft`/`hidden`, le mode Coming Soon et les passerelles sont inchangés.
+Lors du développement, rien n'a été envoyé ni modifié sur www.louis94.com, ni dans WooCommerce. Le déploiement n'a touché que le dossier du Manager (et `plugin-backups/`) : Le produit test 120 reste en `draft`/`hidden`, le mode Coming Soon et les passerelles sont inchangés.
 
 ## Validation WordPress proposée (à faire plus tard, avec accord)
 
@@ -97,7 +97,27 @@ Rien n'a été envoyé ni modifié sur www.louis94.com, ni dans WooCommerce. Le 
 6. Point d'attention : le produit test 120 est en `draft`, donc aucun CTA n'apparaîtra pour lui tant qu'il n'est pas publié (publication hors périmètre).
 7. Rollback : réinstaller la sauvegarde 0.5.0. Aucune donnée n'est créée par la 0.6.0.
 
+## Déploiement du 23/10/2026 (accord explicite du propriétaire)
+
+Fait par le CLI Novamira (profil `www.louis94.com`), selon la procédure ci-dessus :
+
+1. Préflight : Manager 0.5.0 actif dans `wp-content/plugins/zydka-player-manager`, 17 fichiers identiques à l'import du dépôt.
+2. Sauvegarde : `wp-content/plugin-backups/zydka-player-manager-0.5.0-before-v060-20261023-000453`, 17/17 fichiers identiques à la source.
+3. ZIP envoyé dans `wp-content/plugin-backups/zydka-player-manager-0.6.0.zip` : 39 768 octets, SHA-256 serveur `4AF1A9E0…3606`, identique au local.
+4. `wp plugin install … --force` : succès ; `zydka-player-manager` actif en **0.6.0**. `wp cache flush` fait.
+5. Contrôles en lecture seule :
+   - les 17 fichiers installés ont les mêmes empreintes que `apps/zydka-player-manager/` sur `main` ; PHP les charge sans erreur (`wp eval`) ;
+   - `get_product_buy_url()` : produit 115 publié → son permalink ; produit 120 `draft` → vide ; variations 121–123 → vide ; ID 0, ID inexistant, page 111 → vide ;
+   - les tracks 88, 90 et 92 n'ont aucun produit lié : `buyUrl` et `buyLabel` vides, donc aucun CTA ;
+   - `/demo-track/` : HTTP 200, `data-source="manager-playlist"` (playlist 97), `front.css?ver=0.6.0`, `zydka-player.js?ver=0.3.2`, aucun `data-buy-url` ;
+   - `/test-zydka-player/` (shortcode manuel) : HTTP 200, `data-buy-url` manuel toujours présent ;
+   - REST `playlist/97` : 3 tracks, `buyUrl`/`buyLabel` vides ; `playlist/76` répond 403 « Playlist non publique », comme avant.
+
+Non vérifié en production : l'affichage réel du bouton `Voir les licences`, car aucune track n'est liée à un produit publié. Lier une track au produit 115, ou publier le 120, serait une modification de données à autoriser séparément.
+
+Rollback : `wp plugin install` depuis une archive de la sauvegarde ci-dessus, ou recopie du dossier sauvegardé, puis `wp cache flush`.
+
 ## Reste / décisions
 
-- Valider la 0.6.0 sur WordPress (procédure ci-dessus), avec accord.
+- Tester le bouton sur une vraie track liée à un produit publié (modification de données, à autoriser).
 - Optionnel : styler `.zydka-manager-track-buy` dans `front.css` (le lien du fallback utilise le style par défaut du thème).

@@ -1,4 +1,11 @@
 import { WordPressBridge } from '@zydka/wordpress-bridge';
+import {
+  FAVORITES_STORAGE_KEY,
+  getFavoriteKey,
+  parseFavorites,
+  serializeFavorites,
+  toggleFavorite,
+} from './favorites';
 import { getEmbeddedCoverUrl, revokeEmbeddedCoverCache } from './metadataCover';
 import { setupMediaSession } from './mediaSession';
 import { findTrackIndex, getShareText, getTrackHash, parseTrackHash } from './sharedTrack';
@@ -183,7 +190,7 @@ function getBuyLabel(track: ZydkaTrack | null | undefined): string {
   return track?.buyLabel?.trim() || 'Voir le projet';
 }
 
-type ControlIconName = 'shuffle' | 'previous' | 'play' | 'pause' | 'next' | 'repeat' | 'volume' | 'muted' | 'share';
+type ControlIconName = 'shuffle' | 'previous' | 'play' | 'pause' | 'next' | 'repeat' | 'volume' | 'muted' | 'favorite' | 'share';
 
 const controlIcons: Record<ControlIconName, string> = {
   shuffle: `
@@ -238,6 +245,11 @@ const controlIcons: Record<ControlIconName, string> = {
       <path d="M4.75 9.25h3.1l4.4-3.25v12l-4.4-3.25h-3.1v-5.5Z" />
       <path d="m16 9 4 6" />
       <path d="m20 9-4 6" />
+    </svg>
+  `,
+  favorite: `
+    <svg class="zydka-player-control-icon zydka-player-control-icon--favorite" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M12 18.5s-6.75-4.25-6.75-8.55A3.7 3.7 0 0 1 12 7.8a3.7 3.7 0 0 1 6.75 2.15C18.75 14.25 12 18.5 12 18.5Z" />
     </svg>
   `,
   share: `
@@ -417,6 +429,12 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
   const shareControl = document.createElement('div');
   shareControl.className = 'zydka-player-share';
 
+  const favoriteButton = document.createElement('button');
+  favoriteButton.className = 'zydka-player-button zydka-player-icon-button zydka-player-mode-button zydka-player-favorite-button';
+  favoriteButton.type = 'button';
+  favoriteButton.setAttribute('aria-pressed', 'false');
+  setIconButton(favoriteButton, 'Ajouter aux favoris', 'favorite');
+
   const shareButton = document.createElement('button');
   shareButton.className = 'zydka-player-button zydka-player-icon-button zydka-player-mode-button zydka-player-share-button';
   shareButton.type = 'button';
@@ -427,7 +445,7 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
   shareFeedback.setAttribute('aria-live', 'polite');
   shareFeedback.hidden = true;
 
-  shareControl.append(shareButton, shareFeedback);
+  shareControl.append(favoriteButton, shareButton, shareFeedback);
 
   const queueOverlay = document.createElement('div');
   queueOverlay.className = 'zydka-player-queue-overlay';
@@ -499,6 +517,25 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
   let isUserSeeking = false;
   let pendingSeekSeconds: number | null = null;
   let seekReleaseTimer: number | undefined;
+  let favoriteTrackKey: string | null = null;
+
+  // Favorites live in this browser only. Storage can be missing or refuse writes
+  // (private mode, quota, blocked cookies): the in-memory set then lasts for the visit.
+  let favoriteKeys = ((): Set<string> => {
+    try {
+      return parseFavorites(window.localStorage.getItem(FAVORITES_STORAGE_KEY));
+    } catch {
+      return new Set<string>();
+    }
+  })();
+
+  const saveFavoriteKeys = (): void => {
+    try {
+      window.localStorage.setItem(FAVORITES_STORAGE_KEY, serializeFavorites(favoriteKeys));
+    } catch {
+      // Keep the session copy; nothing to show the visitor.
+    }
+  };
 
   // Explicit cover first; if it fails to load, fall back to the cover embedded in the MP3
   // so the player and the lock screen never point at a broken image.
@@ -955,6 +992,13 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
     repeatButton.dataset.repeatMode = repeatMode;
     repeatButton.setAttribute('aria-pressed', String(repeatMode !== 'off'));
     setIconButton(repeatButton, getRepeatLabel(), 'repeat');
+    favoriteTrackKey = getFavoriteKey(displayTrack);
+    const isFavorite = favoriteTrackKey !== null && favoriteKeys.has(favoriteTrackKey);
+    favoriteButton.disabled = favoriteTrackKey === null;
+    favoriteButton.classList.toggle('zydka-player-mode-button--active', isFavorite);
+    favoriteButton.classList.toggle('zydka-player-favorite-button--active', isFavorite);
+    favoriteButton.setAttribute('aria-pressed', String(isFavorite));
+    setIconButton(favoriteButton, isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris', 'favorite');
     setIconButton(shareButton, `Partager ${renderText(displayTrack?.title || 'le morceau')}`, 'share');
     previousButton.disabled = getPreviousIndex(navigation, shuffleHistory) === null;
     nextButton.disabled = !canGoNext;
@@ -1052,6 +1096,15 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
 
   repeatButton.addEventListener('click', () => {
     repeatMode = cycleRepeatMode(repeatMode);
+    refreshState();
+  });
+
+  favoriteButton.addEventListener('click', () => {
+    // The key of the track on screen, as set by the last refresh.
+    if (!favoriteTrackKey) return;
+
+    favoriteKeys = toggleFavorite(favoriteKeys, favoriteTrackKey);
+    saveFavoriteKeys();
     refreshState();
   });
 

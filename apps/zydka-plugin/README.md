@@ -215,6 +215,15 @@ Résultat :
 
 ## Changelog
 
+### 0.4.0 - design Zydka Premium UI
+
+- Interface reprise dans le langage Zydka Premium UI v1.0 : châssis graphite mat, pochette dans un logement en creux, touches en relief, bouton Lecture off-white sans halo.
+- Z blanc seul en haut à gauche (fichier original `assets/img/zydka-original.png`, cadré sans être redessiné) et statut de lecture (Prêt, Chargement, En lecture, En pause, Terminé, Indisponible).
+- Timeline et volume remplis en lime depuis la gauche ; le volume affiche la valeur réglée, atténuée quand le son est coupé.
+- File d'attente en panneau bibliothèque (desktop) ou feuille du bas (mobile), piste en cours signalée par un point lime.
+- Focus clavier lime, cibles tactiles de 44 px minimum, pochette en tête sur téléphone.
+- Aucun changement de moteur, de file, de seek, de Media Session ni de partage.
+
 ### 0.3.2 - correctif seek en pause
 
 - Un seek fait pendant la pause (écran verrouillé ou page) est mémorisé et appliqué par Howler au moment de la reprise, au lieu de déplacer l'élément audio en pause.

@@ -51,3 +51,33 @@ L'accueil répond 200 et n'est pas en Coming Soon. Les pages commerciales et lé
 3. Passer en brouillon les pages de test `testoss` (101) et `sample-page` (2). `test-zydka-player` (12) peut rester si elle sert aux tests de non-régression, en privé de préférence.
 4. Remplacer la playlist de démonstration par des previews taguées Louis94 dont les droits sont confirmés.
 5. Ticket T1 : client analytics dans le player.
+
+## Nettoyage appliqué en production (2026-10-24, ~17:00, accord explicite du propriétaire)
+
+Fait par l'API REST WordPress, dans le navigateur intégré, avec la session admin du propriétaire. Changements de statut uniquement, sans aucune suppression :
+
+| Élément | Avant | Après |
+|---|---|---|
+| Page 83 `demo-track` | publish | private |
+| Page 101 `testoss` | publish | private |
+| Page 12 `test-zydka-player` | publish | private |
+| Page 2 `sample-page` | publish | draft |
+| Tracks 88, 90, 92 (Anderson .Paak) | publish | draft |
+| Catalogue 97 « Test 1 » | publish | draft |
+
+Vérification en visiteur anonyme : les quatre pages répondent 404 ; `playlist/97` et `playlist/76` répondent 403 ; `/wp/v2/zydka_track` renvoie `[]`.
+
+Reste public : les fichiers de la médiathèque (MP3 d'Anderson .Paak, Busta Rhymes, Nas) sont accessibles par URL directe. Leur suppression est à décider par le propriétaire.
+
+Retour arrière : repasser chaque élément en `publish`.
+
+## Previews taguées (préparées, pas encore importées)
+
+Dossier local `C:\Users\zinga\Music\Zydka Music\_previews-louis94-2026-10-24\` : 6 MP3 192 kbps à environ −14 LUFS, tag `tag zydka 01` à 0:04 puis toutes les 25 s, true peak ≤ −0,9 dBTP, avec 6 pochettes 1200 px et `SHA256SUMS.txt`.
+
+L'import dans la médiathèque n'a pas abouti :
+- le premier envoi manuel n'est jamais arrivé ;
+- l'assistant ne peut pas piloter le sélecteur de fichiers ;
+- le transit par GitHub a été refusé par la politique de sécurité de la session.
+
+La branche temporaire `assets/previews-2026-10-24` (commit `a6f0ef8`) a été poussée puis n'a pas pu être supprimée par l'assistant : le propriétaire doit la supprimer.

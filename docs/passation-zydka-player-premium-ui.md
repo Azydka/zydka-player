@@ -2,7 +2,16 @@
 
 Date : 2026-10-24
 
-Statut : **rendu validé par le propriétaire, fusionné dans `main` (merge `c3d9b5a`) et poussé. Production inchangée (toujours 0.3.2).**
+Statut : **rendu validé par le propriétaire, fusionné dans `main` (merge `c3d9b5a`) et déployé en production le 2026-10-24 avec son accord.**
+
+## Déploiement production (2026-10-24)
+
+- Sauvegarde de la 0.3.2 : `wp-content/plugin-backups/zydka-player-0.3.2-before-v040-20261024-130103` (4 fichiers, hash identiques à l'original).
+- ZIP envoyé : `wp-content/plugin-backups/zydka-player-0.4.0.zip`, SHA-256 `502130cda82d44dad35a8fb2351b37df33b96e440830afb069bd2808e704fd00`, identique au serveur.
+- `wp plugin install --force` puis `wp cache flush` : `zydka-player` actif en 0.4.0.
+- `/demo-track/` et `/test-zydka-player/` servent `?ver=0.4.0` ; JS, CSS et logo servis identiques au ZIP.
+- Contrôle en ligne sur `/demo-track/` : rendu graphite, Z, pochette réelle, file de 3 morceaux ; lecture, seek à 0:30 et pause OK, son coupé pendant le test puis rétabli.
+- Retour arrière : réinstaller le contenu de la sauvegarde ci-dessus dans `wp-content/plugins/zydka-player`, puis `wp cache flush`.
 
 ## État du dépôt
 
@@ -34,5 +43,4 @@ Référence appliquée : compétence `zydka-premium-ui` (Radio Context V1.2.4, s
 ## Reste à faire / décisions
 
 - Non testé : Safari iOS, Firefox (styles `-moz-range-*` écrits mais pas vus), écran verrouillé (aucune logique touchée), zoom 200 %.
-- Déploiement en production : uniquement avec accord explicite, procédure de sauvegarde de la passation 0.3.2.
 - Le PNG du logo pèse 130 Ko (5071 × 3404) pour un affichage de 31 px. Un recadrage allégerait la page, mais la référence demande de conserver le fichier intact : à décider.

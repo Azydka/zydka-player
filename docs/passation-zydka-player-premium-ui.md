@@ -2,13 +2,13 @@
 
 Date : 2026-10-24
 
-Statut : **implémenté et vérifié en local sur la branche `feat/player-premium-ui`, en attente de validation visuelle du propriétaire. Pas fusionné dans `main`. Production inchangée.**
+Statut : **rendu validé par le propriétaire, fusionné dans `main` (merge `c3d9b5a`) et poussé. Production inchangée (toujours 0.3.2).**
 
 ## État du dépôt
 
 - Départ : `main = origin/main = 612de13`, dépôt propre, aucun stash.
 - Worktree Codex existant `C:/Users/zinga/.codex/worktrees/ddca/Zydka player` (HEAD détachée sur `3906976`, propre) : non créé par cette tâche, non touché.
-- Branche de travail : `feat/player-premium-ui`.
+- Branche de travail : `feat/player-premium-ui`, fusionnée dans `main` avec `--no-ff`, puis supprimée.
 
 ## Travail réalisé
 
@@ -33,7 +33,6 @@ Référence appliquée : compétence `zydka-premium-ui` (Radio Context V1.2.4, s
 
 ## Reste à faire / décisions
 
-- Validation visuelle du propriétaire, puis fusion `--no-ff` dans `main` après les trois validations.
 - Non testé : Safari iOS, Firefox (styles `-moz-range-*` écrits mais pas vus), écran verrouillé (aucune logique touchée), zoom 200 %.
 - Déploiement en production : uniquement avec accord explicite, procédure de sauvegarde de la passation 0.3.2.
 - Le PNG du logo pèse 130 Ko (5071 × 3404) pour un affichage de 31 px. Un recadrage allégerait la page, mais la référence demande de conserver le fichier intact : à décider.

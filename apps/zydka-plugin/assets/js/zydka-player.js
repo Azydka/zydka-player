@@ -24,7 +24,11 @@
   };
   var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
   var __commonJS = (cb, mod) => function __require() {
-    return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
+    try {
+      return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
+    } catch (e) {
+      throw mod = 0, e;
+    }
   };
   var __copyProps = (to, from, except, desc) => {
     if (from && typeof from === "object" || typeof from === "function") {
@@ -44,10 +48,9 @@
   ));
   var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
 
-  // ../../node_modules/.pnpm/howler@2.2.4/node_modules/howler/dist/howler.js
+  // ../../../claude-0/deps/howler/dist/howler.js
   var require_howler = __commonJS({
-    "../../node_modules/.pnpm/howler@2.2.4/node_modules/howler/dist/howler.js"(exports) {
-      "use strict";
+    "../../../claude-0/deps/howler/dist/howler.js"(exports) {
       (function() {
         "use strict";
         var HowlerGlobal2 = function() {
@@ -2493,7 +2496,7 @@
     }
   };
 
-  // ../../node_modules/.pnpm/zustand@5.0.14/node_modules/zustand/esm/vanilla.mjs
+  // ../../../claude-0/deps/zustand/src/vanilla.ts
   var createStoreImpl = (createState) => {
     let state;
     const listeners = /* @__PURE__ */ new Set();
@@ -3238,6 +3241,23 @@
     };
   }
 
+  // src/deviceCapabilities.ts
+  var PROBE_VOLUME = 0.5;
+  function canControlMediaVolume(createProbe = defaultProbe) {
+    try {
+      const probe = createProbe();
+      if (!probe) return true;
+      probe.volume = PROBE_VOLUME;
+      return Math.abs(probe.volume - PROBE_VOLUME) < 0.01;
+    } catch (e) {
+      return true;
+    }
+  }
+  function defaultProbe() {
+    if (typeof document === "undefined") return null;
+    return document.createElement("audio");
+  }
+
   // src/sharedTrack.ts
   var TRACK_HASH_PREFIX = "track-";
   function normalizeTrackId(id) {
@@ -3275,6 +3295,11 @@
     if (mode === "off") return "queue";
     if (mode === "queue") return "one";
     return "off";
+  }
+  function getRepeatFeedback(mode) {
+    if (mode === "queue") return "R\xE9p\xE9tition : toute la playlist";
+    if (mode === "one") return "R\xE9p\xE9tition : ce morceau";
+    return "R\xE9p\xE9tition d\xE9sactiv\xE9e";
   }
   function pickRandom(candidates, random) {
     const position = Math.min(candidates.length - 1, Math.floor(random() * candidates.length));
@@ -3653,6 +3678,11 @@
     volumeValue.className = "zydka-player-volume-value";
     volumeValue.textContent = "100%";
     volumeControl.append(muteButton, volumeSlider, volumeValue);
+    if (!canControlMediaVolume()) {
+      volumeControl.classList.add("zydka-player-volume--system");
+      volumeSlider.hidden = true;
+      volumeValue.hidden = true;
+    }
     const shareControl = document.createElement("div");
     shareControl.className = "zydka-player-share";
     const favoriteButton = document.createElement("button");
@@ -3807,7 +3837,7 @@
       return playAtIndex(previousIndex, { resetShuffleHistory: false });
     };
     const getRepeatLabel = () => {
-      if (repeatMode === "queue") return "R\xE9p\xE9ter la file";
+      if (repeatMode === "queue") return "R\xE9p\xE9ter la playlist";
       if (repeatMode === "one") return "R\xE9p\xE9ter le morceau";
       return "Activer la r\xE9p\xE9tition";
     };
@@ -4197,6 +4227,7 @@
     repeatButton.addEventListener("click", () => {
       repeatMode = cycleRepeatMode(repeatMode);
       refreshState();
+      showShareFeedback(getRepeatFeedback(repeatMode));
     });
     favoriteButton.addEventListener("click", () => {
       if (!favoriteTrackKey) return;
@@ -4372,27 +4403,23 @@
   document.addEventListener("DOMContentLoaded", bootstrap);
   window.addEventListener("beforeunload", revokeEmbeddedCoverCache, { once: true });
 })();
-/*! Bundled license information:
-
-howler/dist/howler.js:
-  (*!
-   *  howler.js v2.2.4
-   *  howlerjs.com
-   *
-   *  (c) 2013-2020, James Simpson of GoldFire Studios
-   *  goldfirestudios.com
-   *
-   *  MIT License
-   *)
-  (*!
-   *  Spatial Plugin - Adds support for stereo and 3D audio where Web Audio is supported.
-   *  
-   *  howler.js v2.2.4
-   *  howlerjs.com
-   *
-   *  (c) 2013-2020, James Simpson of GoldFire Studios
-   *  goldfirestudios.com
-   *
-   *  MIT License
-   *)
-*/
+/*!
+ *  howler.js v2.2.4
+ *  howlerjs.com
+ *
+ *  (c) 2013-2020, James Simpson of GoldFire Studios
+ *  goldfirestudios.com
+ *
+ *  MIT License
+ */
+/*!
+ *  Spatial Plugin - Adds support for stereo and 3D audio where Web Audio is supported.
+ *  
+ *  howler.js v2.2.4
+ *  howlerjs.com
+ *
+ *  (c) 2013-2020, James Simpson of GoldFire Studios
+ *  goldfirestudios.com
+ *
+ *  MIT License
+ */

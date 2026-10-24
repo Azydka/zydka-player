@@ -29,6 +29,17 @@ export function cycleRepeatMode(mode: RepeatMode): RepeatMode {
   return 'off';
 }
 
+/**
+ * Short message shown after a press on the repeat button. On a phone the
+ * button's title never shows (no hover), so this is the only text telling
+ * the listener which of the three modes is now active.
+ */
+export function getRepeatFeedback(mode: RepeatMode): string {
+  if (mode === 'queue') return 'Répétition : toute la playlist';
+  if (mode === 'one') return 'Répétition : ce morceau';
+  return 'Répétition désactivée';
+}
+
 function pickRandom(candidates: number[], random: () => number): number {
   const position = Math.min(candidates.length - 1, Math.floor(random() * candidates.length));
   return candidates[Math.max(0, position)];

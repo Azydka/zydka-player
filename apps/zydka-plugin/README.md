@@ -215,6 +215,11 @@ Résultat :
 
 ## Changelog
 
+### 0.5.1 - iPhone : volume et répétition
+
+- Volume : sur les appareils où une page ne peut pas régler le volume (iPhone et iPad, tous navigateurs), le curseur et le pourcentage sont masqués. Seul le bouton muet reste, et les boutons du téléphone règlent le son. La détection écrit un volume puis le relit, sans lire le user agent. Ailleurs, rien ne change.
+- Répétition : chaque appui affiche brièvement le mode actif (« Répétition : toute la playlist », « Répétition : ce morceau », « Répétition désactivée ») dans la zone d'annonce existante (`aria-live`). Sur mobile, le libellé au survol n'était jamais visible. Le libellé du mode file devient « Répéter la playlist ».
+
 ### 0.5.0 - favoris locaux
 
 - Bouton cœur à côté du partage : ajoute ou retire le morceau affiché des favoris (`aria-pressed`, libellés « Ajouter aux favoris » / « Retirer des favoris »). Actif : cœur plein, touche enfoncée et point lime.

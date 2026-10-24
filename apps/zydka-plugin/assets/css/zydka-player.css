@@ -605,6 +605,16 @@
   opacity: 0.45;
 }
 
+/* Volume set by the device (iPhone, iPad): mute button only. */
+.zydka-player-volume--system {
+  grid-template-columns: 44px;
+}
+
+.zydka-player-volume--system .zydka-player-volume-slider,
+.zydka-player-volume--system .zydka-player-volume-value {
+  display: none;
+}
+
 .zydka-player-share {
   display: flex;
   gap: 10px;

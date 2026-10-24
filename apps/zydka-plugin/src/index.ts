@@ -8,10 +8,12 @@ import {
 } from './favorites';
 import { getEmbeddedCoverUrl, revokeEmbeddedCoverCache } from './metadataCover';
 import { setupMediaSession } from './mediaSession';
+import { canControlMediaVolume } from './deviceCapabilities';
 import { findTrackIndex, getShareText, getTrackHash, parseTrackHash } from './sharedTrack';
 import {
   cycleRepeatMode,
   getNextTrack,
+  getRepeatFeedback,
   getPreviousIndex,
   type AdvanceReason,
   type QueueNavigationState,
@@ -426,6 +428,14 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
 
   volumeControl.append(muteButton, volumeSlider, volumeValue);
 
+  // iPhone/iPad ignore volume set by a page: keep only mute, the hardware
+  // buttons set the level.
+  if (!canControlMediaVolume()) {
+    volumeControl.classList.add('zydka-player-volume--system');
+    volumeSlider.hidden = true;
+    volumeValue.hidden = true;
+  }
+
   const shareControl = document.createElement('div');
   shareControl.className = 'zydka-player-share';
 
@@ -630,7 +640,7 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
   };
 
   const getRepeatLabel = (): string => {
-    if (repeatMode === 'queue') return 'Répéter la file';
+    if (repeatMode === 'queue') return 'Répéter la playlist';
     if (repeatMode === 'one') return 'Répéter le morceau';
     return 'Activer la répétition';
   };
@@ -1097,6 +1107,7 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
   repeatButton.addEventListener('click', () => {
     repeatMode = cycleRepeatMode(repeatMode);
     refreshState();
+    showShareFeedback(getRepeatFeedback(repeatMode));
   });
 
   favoriteButton.addEventListener('click', () => {

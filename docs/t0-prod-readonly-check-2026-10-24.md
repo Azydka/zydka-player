@@ -81,3 +81,27 @@ L'import dans la médiathèque n'a pas abouti :
 - le transit par GitHub a été refusé par la politique de sécurité de la session.
 
 La branche temporaire `assets/previews-2026-10-24` (commit `a6f0ef8`) a été poussée puis n'a pas pu être supprimée par l'assistant : le propriétaire doit la supprimer.
+
+## Mise en ligne de la playlist Louis94 (2026-10-24, ~22:45, accord explicite du propriétaire)
+
+- Médias 129 à 134 (6 MP3 de preview) et 135 à 140 (6 pochettes JPG) envoyés par Claude in Chrome. Les tailles en octets sont identiques aux fichiers locaux.
+- Tracks créées, toutes `publish`, type `beat`, statut `listen_only`, artiste Louis94, album « Louis94 — Beats » :
+  - 141 Plein Jour (98, Ré majeur) ;
+  - 142 Instru 81 (113) ;
+  - 143 Instru 73 (90) ;
+  - 144 Instru 85 (90) ;
+  - 145 Instru 71 (140) ;
+  - 146 Instru 70 (160).
+- Métadonnées enregistrées par le formulaire du Manager (méta-box, nonce). L'API REST n'expose pas ces champs.
+- Catalogue 147 « Louis94 — Beats » : `publish`, affichage public, tracks 141 à 146 dans cet ordre. `playlist/147` répond 200 en anonyme.
+- Page 83 `demo-track` : contenu `[zydka_playlist id="147"]`, repassée en `publish`.
+
+Tests en visiteur anonyme :
+- 6 tracks, *Plein Jour* en premier, aucune mention de tiers ;
+- les 6 MP3 répondent 200 `audio/mpeg`, les 6 pochettes 200 ;
+- lecture : `playing`, durée 123 s, puis Next vers Instru 81 en `playing`, sans erreur ;
+- rendu à 375 px sans défilement horizontal, file « À suivre (6) ».
+
+Non testé : appareil réel et écran verrouillé.
+
+Retour arrière : page 83 en `private`, catalogue 147 et tracks 141 à 146 en `draft`.

@@ -13,11 +13,11 @@ Source analysée : `C:\Users\zinga\Music\Zydka Music` (lecture seule).
 | Beat | `instru_52_Dmaj_98bpm` (WAV + MP3, mai 2023) |
 | Titre commercial | **Plein Jour** (alternatives : *Ligne Claire*, *Rive Droite*) |
 | Fiche | « Plein Jour — Prod. Louis94 · 98 BPM · Ré majeur » |
-| Licences | **Basic MP3 29 €**, **Premium WAV 59 €**, **Trackout 149 €** ; exclusivité sur demande uniquement, à partir de 600 €, hors boutique |
+| Licences | **Basic MP3 49 €**, **Premium WAV 99 €**, **Trackout 249 €** ; exclusivité sur demande uniquement, à partir de 1 500 €, hors boutique (grille premium validée le 2026-10-24, voir section 6.2 ; remplace 29 / 59 / 149 € et 600 €) |
 | Lancement | **mardi 1er décembre 2026**, repli au 15 décembre si la relecture juridique ou fiscale n'est pas terminée |
 | Produit WooCommerce | nouveau produit variable en `draft` / `hidden`, distinct du produit test 120, créé seulement après ton accord |
 
-Avant toute mise en vente, il faut ta confirmation que `instru_52` est entièrement de toi : aucun sample, aucun co-producteur, aucune boucle soumise à conditions (section 3).
+Droits : confirmés par le propriétaire le 2026-10-24 (section 3.4).
 
 ## 1. Méthode
 
@@ -168,10 +168,10 @@ Principes communs, à faire valider par un juriste :
 
 | | **Basic** | **Premium** | **Trackout** |
 |---|---|---|---|
-| Prix conseillé | **29 €** | **59 €** | **149 €** |
+| Prix | **49 €** | **99 €** | **249 €** |
 | Fichiers | MP3 320 kbps non tagué | WAV 24 bits non tagué + MP3 320 | WAV + MP3 + stems WAV 24 bits |
 | Titres | 1 | 1 | 1 |
-| Streams audio cumulés | 50 000 | 250 000 | 1 000 000 |
+| Streams audio cumulés | 100 000 | 500 000 | illimités |
 | Ventes / téléchargements payants | 1 000 | 5 000 | 20 000 |
 | Vidéos | 1 clip, non monétisé | 1 clip monétisé | 3 clips monétisés |
 | Radio | non | 2 stations | illimitée |
@@ -181,9 +181,9 @@ Principes communs, à faire valider par un juriste :
 | Revente / redistribution | interdite | interdite | interdite |
 | Exclusivité | non | non | non |
 | Synchronisation | exclue | exclue | exclue |
-| Évolution | vers Premium : +30 € | vers Trackout : +90 € | — |
+| Évolution | vers Premium : +50 € | vers Trackout : +150 € | — |
 
-**Exclusivité** : non vendue en ligne pour le premier lancement. Sur demande, à partir de 600 €, avec un contrat de cession écrit et validé juridiquement. Elle comprend tous les fichiers et l'enregistrement Content ID par l'acheteur, et entraîne le retrait du beat de la boutique.
+**Exclusivité** : non vendue en ligne pour le premier lancement. Sur demande, à partir de 1 500 €, avec un contrat de cession écrit et validé juridiquement. Elle comprend tous les fichiers et l'enregistrement Content ID par l'acheteur, et entraîne le retrait du beat de la boutique.
 
 ### 6.1 Justification des prix
 
@@ -191,6 +191,29 @@ Principes communs, à faire valider par un juriste :
 - 29 € / 59 € / 149 € placent Louis94 dans le haut de la fourchette basse : crédible pour un producteur sans catalogue public, avec une marge pour des promotions de lancement.
 - Les fourchettes de streams (50 000 à 1 000 000) suivent les plafonds observés chez des vendeurs ([exemple de 100 000 streams](https://payhip.com/b/CIcnP), [exemple jusqu'à 500 000](https://arkatechbeatz.com/blogs/news/standard-vs-premium-vs-exclusive-beat-license-whats-the-difference)).
 - Le produit test 120 (29 / 99 / 299 €) n'est pas une référence tarifaire : c'est une fixture technique.
+
+### 6.2 Grille premium (décision du 2026-10-24)
+
+Le propriétaire a jugé la grille 29 / 59 / 149 € trop basse et choisi un positionnement premium, en acceptant le risque commercial. Grille retenue :
+
+| | Basic — MP3 | Premium — WAV | Trackout — stems | Exclusivité |
+|---|---|---|---|---|
+| Ancienne grille (6.1) | 29 € | 59 € | 149 € | dès 600 € |
+| **Grille retenue** | **49 €** | **99 €** | **249 €** | **dès 1 500 €**, hors boutique, sur devis |
+
+Logique :
+
+- chaque palier double à peu près le précédent, pour faire de la Premium WAV le choix central ;
+- le Trackout vise les artistes qui mixent et publient réellement le titre ;
+- l'exclusivité couvre les revenus de licences auxquels elle fait renoncer, plus une prime ;
+- les plafonds de streams sont relevés (100 000 / 500 000 / illimités) pour justifier l'écart de prix ; les autres plafonds restent ceux de la section 6, à revoir avec le juriste ;
+- la montée de licence se fait au prix de la différence (+50 €, puis +150 €).
+
+Conditions pour que la grille tienne : preview soignée, pochette et page produit éditoriales, licences PDF claires livrées avec les fichiers. Pas de promotion de lancement agressive : ajouter de la valeur plutôt que baisser le prix.
+
+Garde-fou : point de revue **60 jours après le lancement**. S'il y a des écoutes et des clics « Voir les licences » mais aucune vente, ajuster. Cela suppose que les événements d'écoute et de clic soient effectivement mesurés (voir l'audit du 2026-10-24 : le player sur `main` n'envoie aucun événement analytics).
+
+Les prix s'entendent TTC. En franchise de TVA, TTC = HT ; le statut fiscal reste à confirmer avec le comptable.
 
 ## 7. Sources consultées
 
@@ -226,7 +249,7 @@ Conditions bloquantes, sans lesquelles la date glisse : droits confirmés, texte
 
 1. **Le beat** : `instru_52_Dmaj_98bpm`, et ta confirmation qu'il ne contient aucun sample, aucune boucle soumise à conditions et aucune contribution de tiers.
 2. **Le titre** : *Plein Jour*, ou une autre proposition.
-3. **Les licences et prix** : Basic 29 €, Premium 59 €, Trackout 149 €, exclusivité hors boutique à partir de 600 €, et le partage Sacem par défaut 50/50.
+3. **Les licences et prix** : ~~Basic 29 €, Premium 59 €, Trackout 149 €, exclusivité à partir de 600 €~~ → validé le 2026-10-24 : Basic 49 €, Premium 99 €, Trackout 249 €, exclusivité hors boutique à partir de 1 500 € ; partage Sacem par défaut 50/50, à faire valider.
 4. **La date** : 1er décembre 2026, repli au 15 décembre.
 5. **Le paiement** : Stripe en mode test d'abord (recommandé dans MVP-COM-3).
 6. **La pochette** : création maison ou commande à un graphiste.

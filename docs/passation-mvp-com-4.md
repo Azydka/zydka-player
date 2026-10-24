@@ -58,8 +58,14 @@ Restent ouverts :
 
 Contexte intervenu pendant cette tâche : Codex a fusionné Player 0.4.0 (Premium UI, déployé) et 0.5.0 (favoris, non déployé). `main` est passé de `612de13` à `8e337e5`. Après `pnpm package:wp`, le ZIP de référence à remettre est désormais `dist/zydka-player-0.5.0.zip` (SHA-256 `b69009f0…e11d`), et non plus la 0.3.2.
 
+## Décisions complémentaires du propriétaire (2026-10-24, 16:28)
+
+- **Droits sur `instru_52` confirmés par écrit dans la conversation** : le propriétaire déclare en être l'auteur et a répondu « oui » aux quatre points : aucun sample de tiers ; aucune boucle ou kit dont la licence interdit la revente ou Content ID ; aucun co-producteur ; jamais vendu en exclusivité, jamais distribué avec un ISRC ni enregistré dans Content ID. Le dépôt Sacem éventuel avec d'autres ayants droit n'a pas été posé explicitement : à confirmer à l'occasion.
+- **Grille tarifaire relevée (positionnement premium, risque accepté)** : Basic MP3 49 €, Premium WAV 99 €, Trackout 249 €, exclusivité hors boutique dès 1 500 €. Plafonds de streams 100 000 / 500 000 / illimités. Détail et garde-fou (revue à 60 jours) : `docs/mvp-com-4-first-beat-preflight.md`, section 6.2. Remplace la grille 29 / 59 / 149 € et 600 €.
+- Restent ouverts : la pochette, le statut fiscal, la validation juridique des licences, et chaque écriture en production.
+
 ## Prochaine action
 
-1. Propriétaire : confirmer par écrit les droits sur `instru_52`, retrouver son projet Ableton, exporter les stems (WAV 24 bits / 44,1 kHz, même longueur) et choisir la pochette.
+1. Propriétaire : retrouver le projet Ableton d'`instru_52`, exporter les stems (WAV 24 bits / 44,1 kHz, même longueur) et choisir la pochette.
 2. Assistant, hors production : contrôle technique des stems et du remaster, preview tagué, brouillons des trois licences PDF et des textes juridiques.
 3. Puis, avec un accord explicite : produit « Plein Jour » en `draft` / `hidden`.

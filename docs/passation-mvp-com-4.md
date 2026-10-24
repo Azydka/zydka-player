@@ -41,6 +41,25 @@ Environnement Python isolé dans le dossier temporaire de la session (`librosa`,
 
 Aucune lecture ni écriture en production. Aucun produit, aucune track, aucune option créés ou modifiés.
 
+## Validation du propriétaire (2026-10-24)
+
+Le propriétaire a répondu « ok » à la proposition par défaut, après avoir d'abord annoncé un ajustement sans le préciser. Sont donc retenus :
+
+- beat `instru_52_Dmaj_98bpm`, titre **Plein Jour** ;
+- Basic 29 €, Premium 59 €, Trackout 149 € ; exclusivité hors boutique à partir de 600 € ; partage Sacem 50/50 par défaut, à faire valider ;
+- lancement le 1er décembre 2026, repli au 15 décembre ;
+- Stripe en mode test d'abord.
+
+Restent ouverts :
+
+- la **confirmation écrite des droits** sur `instru_52` : aucun sample, aucune boucle soumise à conditions, aucun co-producteur, jamais vendu en exclusivité ni distribué. Le « ok » général ne vaut pas cette confirmation, qui reste un préalable à toute mise en vente ;
+- le choix de la pochette (création maison ou graphiste) ;
+- chaque écriture en production, qui demande un accord explicite séparé.
+
+Contexte intervenu pendant cette tâche : Codex a fusionné Player 0.4.0 (Premium UI, déployé) et 0.5.0 (favoris, non déployé). `main` est passé de `612de13` à `8e337e5`. Après `pnpm package:wp`, le ZIP de référence à remettre est désormais `dist/zydka-player-0.5.0.zip` (SHA-256 `b69009f0…e11d`), et non plus la 0.3.2.
+
 ## Prochaine action
 
-Le propriétaire valide ou ajuste les décisions de la section 9 du préflight, et confirme les droits sur le beat retenu. Ensuite : export des stems et remaster, puis, avec un accord explicite, création du produit en `draft` / `hidden`.
+1. Propriétaire : confirmer par écrit les droits sur `instru_52`, retrouver son projet Ableton, exporter les stems (WAV 24 bits / 44,1 kHz, même longueur) et choisir la pochette.
+2. Assistant, hors production : contrôle technique des stems et du remaster, preview tagué, brouillons des trois licences PDF et des textes juridiques.
+3. Puis, avec un accord explicite : produit « Plein Jour » en `draft` / `hidden`.

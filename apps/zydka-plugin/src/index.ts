@@ -85,6 +85,16 @@ interface ZydkaPlayerAPI {
 
 const UNAVAILABLE_TRACK_MESSAGE = 'Ce morceau est indisponible pour le moment.';
 
+const STATUS_LABELS: Record<ZydkaPlayerState['status'], string> = {
+  idle: 'Prêt',
+  loading: 'Chargement',
+  ready: 'Prêt',
+  playing: 'En lecture',
+  paused: 'En pause',
+  ended: 'Terminé',
+  error: 'Indisponible',
+};
+
 declare global {
   interface Window {
     ZydkaPlayer: ZydkaPlayerAPI | undefined;
@@ -263,9 +273,19 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
   const textBlock = document.createElement('div');
   textBlock.className = 'zydka-player-track-meta';
 
-  const eyebrow = document.createElement('p');
-  eyebrow.className = 'zydka-player-eyebrow';
-  eyebrow.textContent = 'Zydka Player';
+  // Brand bar: the white Z alone on the left, playback status on the right.
+  const topbar = document.createElement('div');
+  topbar.className = 'zydka-player-topbar';
+
+  const brand = document.createElement('span');
+  brand.className = 'zydka-player-brand';
+  brand.setAttribute('role', 'img');
+  brand.setAttribute('aria-label', 'Zydka');
+
+  const statusLabel = document.createElement('p');
+  statusLabel.className = 'zydka-player-status';
+
+  topbar.append(brand, statusLabel);
 
   const title = document.createElement('h2');
   title.className = 'zydka-player-title';
@@ -304,7 +324,7 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
 
   headerAside.append(cover, trackCounter);
 
-  textBlock.append(eyebrow, title, artist, buyLink);
+  textBlock.append(title, artist, buyLink);
   header.append(textBlock, headerAside);
 
   const actions = document.createElement('div');
@@ -459,7 +479,7 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
 
   footer.hidden = true;
   footer.append(error);
-  card.append(header, actions, timeline, volumeControl, shareControl, footer);
+  card.append(topbar, header, actions, timeline, volumeControl, shareControl, footer);
   root.append(card, queueOverlay);
 
   const failedCoverUrls = new Set<string>();
@@ -890,6 +910,7 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
     actions.classList.toggle('zydka-player-actions--has-queue', hasQueue);
     queueButton.textContent = hasQueue ? `À suivre (${queue.length})` : 'À suivre';
     card.className = `zydka-player-card zydka-player-state-${state.status}`;
+    statusLabel.textContent = STATUS_LABELS[state.status];
     title.textContent = renderText(displayTrack?.title ?? fallbackDisplayTrack.title);
     artist.textContent = renderText(displayTrack?.artist ?? fallbackDisplayTrack.artist);
     const buyUrl = displayTrack?.buyUrl?.trim();
@@ -952,6 +973,8 @@ function renderTestPlayer(root: HTMLElement, fallbackDisplayTrack: ZydkaTrackInp
     progress.style.setProperty('--zydka-progress-percent', `${timelineDisplay.percent}%`);
     progress.setAttribute('aria-valuetext', timelineDisplay.valueText);
     volumeSlider.value = String(volume);
+    // Lime fill shows the set volume, not the measured audio level.
+    volumeSlider.style.setProperty('--zydka-volume-percent', `${Math.round(volume * 100)}%`);
     volumeValue.textContent = `${Math.round(volume * 100)}%`;
     volumeControl.classList.toggle('zydka-player-volume--muted', muted);
     muteButton.classList.toggle('zydka-player-mute-button--muted', muted);

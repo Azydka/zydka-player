@@ -20,6 +20,7 @@ $pluginConfigs = @{
             "zydka-player.php",
             "README.md",
             "assets\css\zydka-player.css",
+            "assets\img\zydka-original.png",
             "assets\js\zydka-player.js"
         )
     }

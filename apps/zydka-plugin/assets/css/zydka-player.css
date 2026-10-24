@@ -1,32 +1,31 @@
-/* Zydka Player - premium WordPress interface */
+/* Zydka Player - Zydka Premium UI v1.0 (graphite chassis, recessed wells, lime progress) */
 
 .zydka-player-root {
-  --zydka-surface: #f7f2ea;
-  --zydka-card: rgba(255, 255, 255, 0.86);
-  --zydka-card-strong: #fffaf4;
-  --zydka-graphite: #171717;
-  --zydka-muted: #6b6259;
-  --zydka-soft: #e7ded2;
-  --zydka-red: #bd171e;
-  --zydka-red-dark: #931116;
-  --zydka-shadow: 0 28px 80px rgba(31, 24, 16, 0.12);
-  --zydka-shadow-soft: 0 18px 45px rgba(31, 24, 16, 0.1);
+  --zydka-bg: #0b0d10;
+  --zydka-panel: #15191d;
+  --zydka-raised: #1d2328;
+  --zydka-ink: #f5f3ef;
+  --zydka-muted: #abb2b9;
+  --zydka-lime: #bfd85a;
+  --zydka-red: #f3a09b;
+  --zydka-edge: #343c43;
+  --zydka-control: #7e8994;
+  --zydka-track: #0c1115;
+  --zydka-drop: 12px 14px 28px #0008, -5px -5px 18px #ffffff05;
+  --zydka-well: inset 8px 9px 19px #000a, inset -2px -2px 5px #ffffff0d;
+  --zydka-face: linear-gradient(145deg, #252c32, #1d2328 58%, #171c21);
+  --zydka-key: linear-gradient(145deg, #323a41, #1b2126);
+  --zydka-key-shadow: 5px 6px 12px #0009, -2px -2px 7px #ffffff06, inset 0 1px 1px #ffffff22;
+  --zydka-pressed: inset 3px 4px 8px #000b, inset -1px -1px 3px #ffffff0a;
   box-sizing: border-box;
   display: grid;
   gap: 18px;
   width: 100%;
   max-width: 1180px;
   margin: 28px auto;
-  padding: clamp(16px, 3vw, 30px);
-  border: 1px solid rgba(255, 255, 255, 0.74);
-  border-radius: 30px;
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(247, 242, 234, 0.96)),
-    var(--zydka-surface);
-  color: var(--zydka-graphite);
-  box-shadow: 0 22px 70px rgba(31, 24, 16, 0.08);
+  padding: 0;
+  color: var(--zydka-ink);
   font-family:
-    Inter,
     -apple-system,
     BlinkMacSystemFont,
     "Segoe UI",
@@ -39,26 +38,48 @@
   box-sizing: border-box;
 }
 
+/* Chassis: one matte graphite shell lit from the top left. */
 .zydka-player-card {
   position: relative;
   width: 100%;
   margin: 0;
-  padding: clamp(22px, 3vw, 36px);
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.78);
-  border-radius: 26px;
-  background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(255, 250, 244, 0.76)),
-    var(--zydka-card);
-  color: var(--zydka-graphite);
-  box-shadow: var(--zydka-shadow);
-  backdrop-filter: blur(14px);
+  padding: clamp(20px, 3vw, 34px);
+  border: 1px solid #ffffff12;
+  border-bottom: 4px solid #07090b;
+  border-radius: 32px;
+  background: linear-gradient(115deg, #242b31, #1d2328 45%, #191f24);
+  color: var(--zydka-ink);
+  box-shadow:
+    0 36px 60px #0009,
+    0 2px 2px #000,
+    inset 0 1px 1px #ffffff20,
+    inset 1px 0 #ffffff0a;
   transition: box-shadow 0.45s ease;
+}
+
+/* Fine grain on the shell, under the controls. */
+.zydka-player-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  opacity: 0.08;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Cpath fill='%23fff' filter='url(%23n)' opacity='.18' d='M0 0h160v160H0z'/%3E%3C/svg%3E");
+}
+
+.zydka-player-card > * {
+  position: relative;
+  z-index: 1;
 }
 
 /* Track opened from a shared link: brief outline so the visitor sees where it is. */
 .zydka-player-root--shared .zydka-player-card {
-  box-shadow: var(--zydka-shadow), 0 0 0 3px rgba(189, 23, 30, 0.38);
+  box-shadow:
+    0 36px 60px #0009,
+    0 2px 2px #000,
+    inset 0 1px 1px #ffffff20,
+    0 0 0 3px #bfd85a66;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -67,13 +88,52 @@
   }
 }
 
-.zydka-player-card::before {
+.zydka-player-topbar {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: clamp(20px, 3vw, 28px);
+  padding-bottom: 16px;
+  border-bottom: 1px solid #ffffff0b;
+}
+
+/* The user's original Z, shown intact and framed like the reference viewBox (2124 1347 823 708). */
+.zydka-player-brand {
+  display: block;
+  flex-shrink: 0;
+  width: 31px;
+  height: 27px;
+  background: url("../img/zydka-original.png") no-repeat -80.01px -50.74px / 191.01px 128.22px;
+  filter: brightness(0) invert(1);
+}
+
+.zydka-player-status {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+  color: var(--zydka-muted);
+  font-size: 12px;
+  line-height: 1;
+}
+
+.zydka-player-status::before {
   content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  border-radius: inherit;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.86);
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--zydka-muted);
+}
+
+.zydka-player-state-playing .zydka-player-status::before {
+  background: var(--zydka-lime);
+  box-shadow: 0 0 9px #bfd85a60;
+}
+
+.zydka-player-state-error .zydka-player-status::before {
+  background: var(--zydka-red);
 }
 
 .zydka-player-header {
@@ -96,39 +156,46 @@
   min-width: 0;
 }
 
+/* Cover sleeve: deep recessed well holding the artwork. */
 .zydka-player-cover {
   position: relative;
   display: grid;
   place-items: center;
   width: clamp(104px, 18vw, 168px);
   aspect-ratio: 1;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.82);
+  padding: 8px;
   border-radius: 24px;
-  background:
-    linear-gradient(145deg, rgba(23, 23, 23, 0.96), rgba(78, 69, 61, 0.92)),
-    #1b1b1b;
-  color: #ffffff;
-  box-shadow:
-    0 22px 48px rgba(31, 24, 16, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  background: #13181c;
+  color: var(--zydka-ink);
+  box-shadow: var(--zydka-well), 0 1px #ffffff14;
 }
 
 .zydka-player-cover-image {
   display: block;
   width: 100%;
   height: 100%;
+  border-radius: 17px;
   object-fit: cover;
+  box-shadow: 0 5px 8px #0006;
 }
 
 .zydka-player-cover-fallback {
-  color: #fff6ed;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 17px;
+  background:
+    radial-gradient(ellipse at 30% 10%, #414a4270, transparent 60%),
+    linear-gradient(145deg, #252d31, #171c21);
+  color: var(--zydka-ink);
   font-size: clamp(30px, 5vw, 54px);
-  font-weight: 800;
+  font-weight: 300;
+  letter-spacing: -2px;
   line-height: 1;
+  box-shadow: inset 0 1px #ffffff0b, 0 5px 8px #0006;
 }
 
-.zydka-player-eyebrow,
 .zydka-player-title,
 .zydka-player-artist,
 .zydka-player-counter,
@@ -136,43 +203,24 @@
   margin: 0;
 }
 
-.zydka-player-eyebrow {
-  display: inline-flex;
-  align-items: center;
-  justify-self: start;
-  width: fit-content;
-  max-width: 100%;
-  min-height: 24px;
-  padding: 4px 9px;
-  border: 1px solid rgba(189, 23, 30, 0.16);
-  border-radius: 999px;
-  background: rgba(189, 23, 30, 0.07);
-  color: var(--zydka-red);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0;
-  line-height: 1;
-  text-transform: uppercase;
-}
-
 .zydka-player-title {
-  margin-top: 16px;
   max-width: 14em;
   overflow-wrap: normal;
   word-break: normal;
   white-space: normal;
-  color: var(--zydka-graphite);
-  font-size: clamp(28px, 4vw, 48px);
-  font-weight: 850;
-  line-height: 1.02;
+  color: var(--zydka-ink);
+  font-size: clamp(28px, 4vw, 44px);
+  font-weight: 500;
+  letter-spacing: -1.2px;
+  line-height: 1.06;
 }
 
 .zydka-player-artist {
   margin-top: 10px;
   overflow-wrap: anywhere;
   color: var(--zydka-muted);
-  font-size: 16px;
-  font-weight: 650;
+  font-size: 15px;
+  font-weight: 500;
   line-height: 1.4;
 }
 
@@ -184,73 +232,74 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 40px;
-  margin-top: 18px;
-  padding: 10px 16px;
-  border: 1px solid rgba(23, 23, 23, 0.9);
+  min-height: 44px;
+  margin-top: 20px;
+  padding: 10px 20px;
+  border: 1px solid var(--zydka-control);
   border-radius: 999px;
-  background: var(--zydka-graphite);
-  color: #ffffff;
-  font-size: 13px;
-  font-weight: 800;
+  background: var(--zydka-face);
+  color: var(--zydka-ink);
+  font-size: 14px;
+  font-weight: 600;
   line-height: 1;
   text-decoration: none;
-  box-shadow: 0 10px 24px rgba(23, 23, 23, 0.13);
+  box-shadow: var(--zydka-key-shadow);
 }
 
 .zydka-player-buy-link:hover,
 .zydka-player-buy-link:focus {
-  background: #2a2521;
-  color: #ffffff;
+  border-color: #9aa4ad;
+  background: linear-gradient(145deg, #2c343a, #20272c 58%, #1a2025);
+  color: var(--zydka-ink);
   text-decoration: none;
 }
 
-.zydka-player-buy-link:focus-visible {
-  outline: 2px solid var(--zydka-red);
-  outline-offset: 3px;
+.zydka-player-buy-link:active {
+  box-shadow: var(--zydka-pressed);
 }
 
 .zydka-player-counter {
   justify-self: end;
-  padding: 7px 11px;
-  border: 1px solid rgba(23, 23, 23, 0.08);
+  padding: 7px 12px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.7);
+  background: #171c21;
   color: var(--zydka-muted);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
-  font-weight: 800;
+  font-weight: 600;
   line-height: 1;
   white-space: nowrap;
+  box-shadow: inset 2px 3px 6px #000a, 0 1px #ffffff0d;
 }
 
 .zydka-player-actions {
   display: grid;
-  grid-template-columns: 44px 52px minmax(70px, 92px) 52px 44px;
-  gap: 10px;
+  grid-template-columns: 44px 52px 68px 52px 44px;
+  gap: 12px;
   align-items: center;
   justify-content: center;
-  margin-top: clamp(24px, 4vw, 34px);
+  margin-top: clamp(26px, 4vw, 36px);
 }
 
 .zydka-player-actions--has-queue {
-  grid-template-columns: 44px 52px minmax(70px, 92px) 52px 44px minmax(112px, 1fr);
+  grid-template-columns: 44px 52px 68px 52px 44px minmax(112px, 1fr);
 }
 
+/* Raised physical keys. */
 .zydka-player-button {
-  min-height: 46px;
+  min-height: 44px;
   padding: 11px 16px;
-  border: 1px solid rgba(23, 23, 23, 0.13);
+  border: 1px solid #ffffff17;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.8);
-  color: var(--zydka-graphite);
+  background: var(--zydka-key);
+  color: var(--zydka-ink);
   cursor: pointer;
   font: inherit;
   font-size: 13px;
-  font-weight: 850;
+  font-weight: 600;
   line-height: 1;
   text-align: center;
-  box-shadow: 0 12px 24px rgba(31, 24, 16, 0.08);
+  box-shadow: var(--zydka-key-shadow);
   transition:
     border-color 160ms ease,
     background 160ms ease,
@@ -266,29 +315,40 @@
   min-width: 52px;
   min-height: 52px;
   padding: 0;
-  border-radius: 16px;
+  border-radius: 50%;
 }
 
 .zydka-player-icon-button.zydka-player-mode-button {
+  position: relative;
   width: 44px;
   min-width: 44px;
   min-height: 44px;
-  border-radius: 14px;
-  color: rgba(23, 23, 23, 0.68);
-  box-shadow: none;
+  color: var(--zydka-muted);
 }
 
-.zydka-player-mode-button--active {
-  border-color: rgba(189, 23, 30, 0.28);
-  background: rgba(189, 23, 30, 0.07);
-  color: var(--zydka-red);
+/* Engaged mode: the key sits pressed into the shell, with a small lime indicator. */
+.zydka-player-mode-button--active,
+.zydka-player-mute-button--muted {
+  background: #171c21;
+  color: var(--zydka-ink);
+  box-shadow: var(--zydka-pressed);
+}
+
+.zydka-player-mode-button--active::before {
+  content: "";
+  position: absolute;
+  bottom: 5px;
+  left: calc(50% - 2px);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--zydka-lime);
 }
 
 .zydka-player-mode-button--active:hover,
 .zydka-player-mode-button--active:focus {
-  border-color: rgba(189, 23, 30, 0.42);
-  background: rgba(189, 23, 30, 0.1);
-  color: var(--zydka-red-dark);
+  background: #1a2025;
+  color: var(--zydka-ink);
 }
 
 .zydka-player-repeat-button {
@@ -298,17 +358,17 @@
 .zydka-player-repeat-button--one::after {
   content: "1";
   position: absolute;
-  right: 8px;
-  bottom: 7px;
+  top: 4px;
+  right: 4px;
   display: grid;
   place-items: center;
-  width: 13px;
-  height: 13px;
+  width: 14px;
+  height: 14px;
   border-radius: 999px;
-  background: var(--zydka-red);
-  color: #ffffff;
+  background: var(--zydka-ink);
+  color: var(--zydka-bg);
   font-size: 9px;
-  font-weight: 850;
+  font-weight: 700;
   line-height: 1;
 }
 
@@ -342,81 +402,63 @@
 
 .zydka-player-button:hover,
 .zydka-player-button:focus {
-  border-color: rgba(189, 23, 30, 0.32);
-  background: #ffffff;
-  color: var(--zydka-red);
+  border-color: #ffffff26;
+  background: linear-gradient(145deg, #39424a, #1e252a);
+  color: var(--zydka-ink);
 }
 
 .zydka-player-button:active:not(:disabled) {
   transform: translateY(1px);
-  box-shadow: 0 8px 18px rgba(31, 24, 16, 0.08);
+  box-shadow: var(--zydka-pressed);
 }
 
-.zydka-player-button:focus-visible,
-.zydka-player-progress:focus-visible,
-.zydka-player-volume-slider:focus-visible,
-.zydka-player-queue__close:focus-visible,
-.zydka-player-queue__item:focus-visible {
-  outline: 2px solid var(--zydka-red);
-  outline-offset: 3px;
+.zydka-player-root :focus-visible,
+.zydka-player-queue-overlay :focus-visible {
+  outline: 3px solid var(--zydka-lime);
+  outline-offset: 4px;
 }
 
-.zydka-player-toggle-button {
-  width: 72px;
-  min-width: 72px;
-  min-height: 58px;
-  border-radius: 20px;
-  border-color: rgba(189, 23, 30, 0.82);
-  background:
-    linear-gradient(145deg, rgba(217, 37, 45, 0.94), rgba(147, 17, 22, 0.98)),
-    var(--zydka-red);
-  color: #ffffff;
+/* Play / pause: off-white key, no halo. */
+.zydka-player-toggle-button,
+.zydka-player-toggle-button--playing {
+  width: 68px;
+  min-width: 68px;
+  min-height: 68px;
+  border: 5px solid #1a2025;
+  background: linear-gradient(145deg, #fffefa, var(--zydka-ink) 60%, #c6c6c1);
+  color: var(--zydka-bg);
   box-shadow:
-    0 18px 34px rgba(189, 23, 30, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.24);
+    0 0 0 1px #ffffff0c,
+    6px 7px 13px #000c,
+    -3px -3px 8px #ffffff0a,
+    inset 0 2px #fff;
 }
 
 .zydka-player-toggle-button:hover,
 .zydka-player-toggle-button:focus {
-  border-color: rgba(147, 17, 22, 0.9);
-  background:
-    linear-gradient(145deg, rgba(189, 23, 30, 0.98), rgba(112, 13, 18, 0.98)),
-    var(--zydka-red-dark);
-  color: #ffffff;
-  box-shadow:
-    0 20px 38px rgba(189, 23, 30, 0.32),
-    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  border-color: #1a2025;
+  background: linear-gradient(145deg, #ffffff, #f8f6f2 60%, #d2d2cd);
+  color: var(--zydka-bg);
 }
 
-.zydka-player-toggle-button--playing {
-  border-color: rgba(23, 23, 23, 0.84);
-  background:
-    linear-gradient(145deg, rgba(43, 39, 35, 0.98), rgba(18, 18, 18, 0.98)),
-    var(--zydka-graphite);
+.zydka-player-toggle-button:active:not(:disabled) {
   box-shadow:
-    0 18px 34px rgba(23, 23, 23, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.14);
-}
-
-.zydka-player-toggle-button--playing:hover,
-.zydka-player-toggle-button--playing:focus {
-  border-color: rgba(189, 23, 30, 0.55);
-  background:
-    linear-gradient(145deg, rgba(54, 48, 43, 0.98), rgba(23, 23, 23, 0.98)),
-    var(--zydka-graphite);
+    0 0 0 1px #ffffff0c,
+    3px 4px 8px #000c,
+    inset 2px 3px 6px #0004;
 }
 
 .zydka-player-button:disabled {
-  opacity: 0.44;
+  opacity: 0.4;
   cursor: not-allowed;
   box-shadow: none;
 }
 
 .zydka-player-button:disabled:hover,
 .zydka-player-button:disabled:focus {
-  border-color: rgba(23, 23, 23, 0.13);
-  background: rgba(255, 255, 255, 0.8);
-  color: var(--zydka-graphite);
+  border-color: #ffffff17;
+  background: var(--zydka-key);
+  color: var(--zydka-ink);
   transform: none;
 }
 
@@ -430,9 +472,9 @@
 
 .zydka-player-time {
   color: var(--zydka-muted);
-  font-size: 13px;
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
-  font-weight: 750;
+  font-weight: 600;
   line-height: 1;
 }
 
@@ -440,13 +482,14 @@
   text-align: right;
 }
 
-.zydka-player-progress {
-  --zydka-progress-percent: 0%;
+/* Linear settings: low value on the left, lime fill up to the thumb. */
+.zydka-player-progress,
+.zydka-player-volume-slider {
   display: block;
   width: 100%;
   min-width: 0;
-  /* 32px touch target around a 10px track. */
-  height: 32px;
+  /* 44px touch target around a 7px track. */
+  height: 44px;
   margin: 0;
   padding: 0;
   border: 0;
@@ -459,73 +502,77 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-.zydka-player-progress::-webkit-slider-runnable-track {
-  height: 10px;
-  border: 1px solid rgba(23, 23, 23, 0.06);
-  border-radius: 999px;
-  background: linear-gradient(
-    90deg,
-    var(--zydka-red-dark) 0%,
-    var(--zydka-red) var(--zydka-progress-percent),
-    #e7dfd5 var(--zydka-progress-percent),
-    #e7dfd5 100%
-  );
-  /* Paint the gradient under the border too, otherwise it repeats as a red sliver at the end. */
-  background-origin: border-box;
-  background-repeat: no-repeat;
-  box-shadow: inset 0 2px 6px rgba(31, 24, 16, 0.08);
+.zydka-player-progress {
+  --zydka-fill: var(--zydka-progress-percent, 0%);
 }
 
-.zydka-player-progress::-webkit-slider-thumb {
-  width: 20px;
-  height: 20px;
-  margin-top: -6px;
-  border: 3px solid #ffffff;
+.zydka-player-volume-slider {
+  --zydka-fill: var(--zydka-volume-percent, 100%);
+}
+
+.zydka-player-progress::-webkit-slider-runnable-track,
+.zydka-player-volume-slider::-webkit-slider-runnable-track {
+  height: 7px;
+  border-radius: 8px;
+  background: linear-gradient(
+    to right,
+    var(--zydka-lime) 0%,
+    var(--zydka-lime) var(--zydka-fill),
+    var(--zydka-track) var(--zydka-fill),
+    var(--zydka-track) 100%
+  );
+  box-shadow: inset 0 2px 3px #0009, 0 1px #ffffff12, 0 0 8px #bfd85a18;
+}
+
+.zydka-player-progress::-webkit-slider-thumb,
+.zydka-player-volume-slider::-webkit-slider-thumb {
+  width: 22px;
+  height: 22px;
+  margin-top: -7.5px;
+  border: 4px solid #252d33;
   border-radius: 50%;
   appearance: none;
   -webkit-appearance: none;
-  background: var(--zydka-red);
-  box-shadow:
-    0 5px 14px rgba(31, 24, 16, 0.16),
-    0 0 0 1px rgba(147, 17, 22, 0.18);
+  background: linear-gradient(145deg, #f5f3ef, #abb2b9);
+  box-shadow: 3px 4px 6px #000b, inset 0 1px #ffffff55;
 }
 
-.zydka-player-progress::-moz-range-track {
-  height: 10px;
-  border: 1px solid rgba(23, 23, 23, 0.06);
-  border-radius: 999px;
-  background: #e7dfd5;
-  box-shadow: inset 0 2px 6px rgba(31, 24, 16, 0.08);
+.zydka-player-progress::-moz-range-track,
+.zydka-player-volume-slider::-moz-range-track {
+  height: 7px;
+  border-radius: 8px;
+  background: var(--zydka-track);
+  box-shadow: inset 0 2px 3px #0009;
 }
 
-.zydka-player-progress::-moz-range-progress {
-  height: 10px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, var(--zydka-red-dark), var(--zydka-red));
+.zydka-player-progress::-moz-range-progress,
+.zydka-player-volume-slider::-moz-range-progress {
+  height: 7px;
+  border-radius: 8px;
+  background: var(--zydka-lime);
+  box-shadow: 0 0 8px #bfd85a25;
 }
 
-.zydka-player-progress::-moz-range-thumb {
-  width: 14px;
-  height: 14px;
-  border: 3px solid #ffffff;
+.zydka-player-progress::-moz-range-thumb,
+.zydka-player-volume-slider::-moz-range-thumb {
+  width: 15px;
+  height: 15px;
+  border: 4px solid #252d33;
   border-radius: 50%;
-  background: var(--zydka-red);
-  box-shadow:
-    0 5px 14px rgba(31, 24, 16, 0.16),
-    0 0 0 1px rgba(147, 17, 22, 0.18);
+  background: var(--zydka-ink);
 }
 
 .zydka-player-progress--dragging::-webkit-slider-thumb {
-  transform: scale(1.15);
+  transform: scale(1.12);
 }
 
 .zydka-player-progress--dragging::-moz-range-thumb {
-  transform: scale(1.15);
+  transform: scale(1.12);
 }
 
 .zydka-player-progress:disabled {
   cursor: default;
-  opacity: 0.55;
+  opacity: 0.5;
 }
 
 .zydka-player-volume {
@@ -533,86 +580,29 @@
   grid-template-columns: 44px minmax(120px, 1fr) 52px;
   gap: 13px;
   align-items: center;
-  margin-top: 20px;
-  padding-top: 18px;
-  border-top: 1px solid rgba(23, 23, 23, 0.08);
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid #ffffff09;
 }
 
 .zydka-player-mute-button {
   width: 44px;
   min-width: 44px;
   min-height: 44px;
-  border-radius: 14px;
-  box-shadow: none;
 }
 
 .zydka-player-volume-value {
   color: var(--zydka-muted);
   font-size: 12px;
-  font-weight: 850;
-  line-height: 1;
-}
-
-.zydka-player-volume-value {
   font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  line-height: 1;
   text-align: right;
 }
 
-.zydka-player-volume--muted .zydka-player-volume-value,
-.zydka-player-mute-button--muted {
-  color: var(--zydka-red);
-}
-
-.zydka-player-mute-button--muted {
-  border-color: rgba(189, 23, 30, 0.28);
-  background: rgba(189, 23, 30, 0.07);
-}
-
-.zydka-player-volume-slider {
-  width: 100%;
-  min-width: 0;
-  height: 18px;
-  appearance: none;
-  background: transparent;
-  cursor: pointer;
-}
-
-.zydka-player-volume-slider::-webkit-slider-runnable-track {
-  height: 6px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, rgba(23, 23, 23, 0.22), rgba(231, 223, 213, 0.95));
-  box-shadow: inset 0 1px 3px rgba(31, 24, 16, 0.12);
-}
-
-.zydka-player-volume-slider::-webkit-slider-thumb {
-  width: 16px;
-  height: 16px;
-  margin-top: -5px;
-  appearance: none;
-  border: 2px solid #ffffff;
-  border-radius: 50%;
-  background: var(--zydka-graphite);
-  box-shadow: 0 7px 16px rgba(31, 24, 16, 0.18);
-}
-
-.zydka-player-volume-slider::-moz-range-track {
-  height: 6px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, rgba(23, 23, 23, 0.22), rgba(231, 223, 213, 0.95));
-  box-shadow: inset 0 1px 3px rgba(31, 24, 16, 0.12);
-}
-
-.zydka-player-volume-slider::-moz-range-thumb {
-  width: 12px;
-  height: 12px;
-  border: 2px solid #ffffff;
-  border-radius: 50%;
-  background: var(--zydka-graphite);
-  box-shadow: 0 7px 16px rgba(31, 24, 16, 0.18);
-}
-
+/* Muted: the set volume stays visible, dimmed. */
 .zydka-player-volume--muted .zydka-player-volume-slider {
-  opacity: 0.56;
+  opacity: 0.45;
 }
 
 .zydka-player-share {
@@ -620,36 +610,33 @@
   gap: 10px;
   align-items: center;
   justify-content: center;
-  min-height: 32px;
+  min-height: 44px;
   margin-top: 14px;
-}
-
-.zydka-player-share-button {
-  color: rgba(23, 23, 23, 0.72);
 }
 
 .zydka-player-share-feedback {
   min-width: 82px;
-  padding: 6px 10px;
-  border: 1px solid rgba(23, 23, 23, 0.08);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.62);
-  color: var(--zydka-muted);
-  font-size: 11px;
-  font-weight: 800;
+  padding: 7px 12px;
+  border: 1px solid #05080a;
+  border-radius: 10px;
+  background: linear-gradient(165deg, #0b1013, #12191c);
+  color: var(--zydka-ink);
+  font-size: 12px;
+  font-weight: 500;
   line-height: 1;
   text-align: center;
   white-space: nowrap;
-  box-shadow: 0 8px 18px rgba(31, 24, 16, 0.06);
+  box-shadow: var(--zydka-well), 0 1px #ffffff12;
 }
 
 .zydka-player-share-feedback[hidden] {
   display: none;
 }
 
-/* display: block on the cover images overrides [hidden]: without this a missing or
+/* display: block/grid on the cover parts overrides [hidden]: without this a missing or
    failed cover shows the browser's broken-image icon on top of the letter fallback. */
 .zydka-player-cover-image[hidden],
+.zydka-player-cover-fallback[hidden],
 .zydka-player-queue__cover-image[hidden] {
   display: none;
 }
@@ -666,9 +653,9 @@
   align-items: flex-end;
   justify-content: center;
   padding: 18px 12px 0;
-  background: rgba(23, 23, 23, 0.36);
+  background: #0b0d10b3;
+  color: var(--zydka-ink);
   font-family:
-    Inter,
     -apple-system,
     BlinkMacSystemFont,
     "Segoe UI",
@@ -681,13 +668,12 @@
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 24px 24px 0 0;
-  background:
-    linear-gradient(145deg, rgba(43, 39, 35, 0.98), rgba(22, 21, 20, 0.98)),
-    #171717;
-  color: #fffaf4;
-  box-shadow: 0 -24px 60px rgba(0, 0, 0, 0.28);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  border: 1px solid #ffffff12;
+  border-radius: 26px 26px 0 0;
+  background: linear-gradient(145deg, #1c2227, #15191d);
+  color: var(--zydka-ink);
+  box-shadow: 0 -24px 60px #000a, inset 0 1px 1px #ffffff14;
 }
 
 .zydka-player-queue__header {
@@ -695,13 +681,12 @@
   gap: 14px;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 18px 14px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 20px 20px 14px;
 }
 
 .zydka-player-queue__heading {
   display: grid;
-  gap: 4px;
+  gap: 6px;
   min-width: 0;
 }
 
@@ -712,64 +697,68 @@
 
 .zydka-player-queue__title {
   color: inherit;
-  font-size: 18px;
-  font-weight: 850;
+  font-size: 19px;
+  font-weight: 500;
+  letter-spacing: -0.3px;
   line-height: 1.15;
 }
 
 .zydka-player-queue__subtitle {
-  color: rgba(255, 250, 244, 0.62);
+  color: var(--zydka-muted);
   font-size: 12px;
-  font-weight: 750;
   line-height: 1.2;
 }
 
 .zydka-player-queue__close {
-  min-height: 36px;
-  padding: 9px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  min-height: 44px;
+  padding: 8px 18px;
+  border: 1px solid var(--zydka-control);
   border-radius: 999px;
-  background: transparent;
-  color: #ffffff;
+  background: var(--zydka-face);
+  color: var(--zydka-ink);
   cursor: pointer;
   font: inherit;
-  font-size: 12px;
-  font-weight: 850;
+  font-size: 13px;
+  font-weight: 600;
   line-height: 1;
 }
 
 .zydka-player-queue__close:hover,
 .zydka-player-queue__close:focus {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.zydka-player-queue .zydka-player-queue__close:focus-visible,
-.zydka-player-queue .zydka-player-queue__item:focus-visible {
-  outline-color: var(--zydka-red);
+  border-color: #9aa4ad;
 }
 
 .zydka-player-queue__list {
   display: grid;
   align-content: start;
-  gap: 10px;
+  gap: 0;
   margin: 0;
-  padding: 14px;
+  padding: 0 14px 14px;
   overflow-y: auto;
   list-style: none;
+}
+
+.zydka-player-queue__list > li {
+  border-bottom: 1px solid #ffffff09;
+}
+
+.zydka-player-queue__list > li:last-child {
+  border-bottom: 0;
 }
 
 .zydka-player-queue__item {
   position: relative;
   display: grid;
-  grid-template-columns: 50px minmax(0, 1fr) auto;
+  grid-template-columns: 47px minmax(0, 1fr) auto;
   gap: 12px;
   align-items: center;
   width: 100%;
-  min-height: 70px;
-  padding: 10px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.055);
+  min-height: 72px;
+  margin: 0;
+  padding: 12px 8px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
   color: inherit;
   cursor: pointer;
   font: inherit;
@@ -778,28 +767,20 @@
 
 .zydka-player-queue__item:hover,
 .zydka-player-queue__item:focus {
-  border-color: rgba(189, 23, 30, 0.38);
-  background: rgba(255, 255, 255, 0.09);
-}
-
-.zydka-player-queue__item--active {
-  border-color: rgba(189, 23, 30, 0.42);
-  background: rgba(189, 23, 30, 0.13);
-  box-shadow: inset 4px 0 0 var(--zydka-red);
+  background: #ffffff06;
 }
 
 .zydka-player-queue__cover {
   position: relative;
   display: grid;
   place-items: center;
-  width: 50px;
+  width: 47px;
   aspect-ratio: 1;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 14px;
-  background: linear-gradient(145deg, #171717, #4c4037);
-  color: #ffffff;
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.16);
+  border-radius: 12px;
+  background: linear-gradient(145deg, #30383d, #192025);
+  color: var(--zydka-ink);
+  box-shadow: 3px 4px 8px #0008, inset 0 1px #ffffff10;
 }
 
 .zydka-player-queue__cover-image {
@@ -810,9 +791,14 @@
 }
 
 .zydka-player-queue__cover-fallback {
-  font-size: 16px;
-  font-weight: 850;
+  font-size: 17px;
+  font-weight: 300;
+  letter-spacing: -1px;
   line-height: 1;
+}
+
+.zydka-player-queue__item--active .zydka-player-queue__cover-fallback {
+  color: var(--zydka-lime);
 }
 
 .zydka-player-queue__meta {
@@ -831,32 +817,43 @@
 }
 
 .zydka-player-queue__track-title {
+  color: var(--zydka-ink);
   font-size: 14px;
-  font-weight: 850;
-  line-height: 1.25;
+  font-weight: 500;
+  line-height: 1.3;
   overflow-wrap: normal;
   word-break: normal;
 }
 
+.zydka-player-queue__item--active .zydka-player-queue__track-title::before {
+  content: "";
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-right: 7px;
+  border-radius: 50%;
+  background: var(--zydka-lime);
+  vertical-align: middle;
+}
+
 .zydka-player-queue__track-artist {
-  color: rgba(255, 250, 244, 0.62);
+  color: var(--zydka-muted);
   font-size: 12px;
   line-height: 1.25;
 }
 
 .zydka-player-queue__state {
-  color: #ffffff;
+  color: var(--zydka-lime);
   font-size: 11px;
-  font-weight: 850;
+  font-weight: 600;
   line-height: 1.2;
-  text-transform: uppercase;
 }
 
 .zydka-player-queue__duration {
-  color: rgba(255, 250, 244, 0.7);
+  color: var(--zydka-muted);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
-  font-weight: 850;
+  font-weight: 600;
   line-height: 1;
   white-space: nowrap;
 }
@@ -871,29 +868,22 @@
   display: none;
 }
 
-.zydka-player-state-error {
-  border-color: rgba(122, 31, 31, 0.44);
-}
-
 .zydka-player-error {
-  color: #8c1d1d;
+  padding: 10px 14px;
+  border: 1px solid #05080a;
+  border-radius: 12px;
+  background: linear-gradient(165deg, #0b1013, #12191c);
+  color: var(--zydka-red);
   font-size: 13px;
   line-height: 1.35;
   text-align: center;
+  box-shadow: var(--zydka-well), 0 1px #ffffff12;
 }
 
 @media (min-width: 900px) {
   .zydka-player-root {
     max-width: 1048px;
     justify-items: center;
-    padding: 0;
-    border-color: transparent;
-    background: transparent;
-    box-shadow: none;
-  }
-
-  .zydka-player-root::before {
-    display: none;
   }
 
   .zydka-player-root--has-queue {
@@ -905,9 +895,7 @@
   .zydka-player-card {
     width: 100%;
     min-height: 100%;
-    padding: clamp(30px, 3vw, 42px);
-    border-radius: 24px;
-    box-shadow: 0 22px 58px rgba(31, 24, 16, 0.11);
+    padding: clamp(26px, 3vw, 38px);
   }
 
   .zydka-player-header {
@@ -919,6 +907,7 @@
   .zydka-player-track-meta {
     display: grid;
     align-content: center;
+    justify-items: start;
     max-width: 620px;
     min-height: 176px;
     padding-top: 0;
@@ -933,22 +922,16 @@
 
   .zydka-player-cover {
     width: clamp(150px, 15vw, 176px);
-    border-radius: 22px;
-    box-shadow:
-      0 18px 42px rgba(31, 24, 16, 0.18),
-      inset 0 1px 0 rgba(255, 255, 255, 0.18);
   }
 
   .zydka-player-counter {
     justify-self: center;
     max-width: 100%;
-    background: rgba(255, 255, 255, 0.66);
   }
 
   .zydka-player-title {
     max-width: min(100%, 11.6em);
-    font-size: clamp(32px, 3.2vw, 44px);
-    line-height: 1.06;
+    font-size: clamp(32px, 3.2vw, 42px);
   }
 
   .zydka-player-artist {
@@ -964,8 +947,8 @@
   }
 
   .zydka-player-actions {
-    grid-template-columns: 46px 56px 82px 56px 46px;
-    gap: 14px;
+    grid-template-columns: 46px 56px 72px 56px 46px;
+    gap: 16px;
     width: min(100%, 620px);
     margin: clamp(28px, 3.5vw, 38px) auto 0;
   }
@@ -974,40 +957,37 @@
     width: 46px;
     min-width: 46px;
     min-height: 46px;
-    border-radius: 15px;
   }
 
   .zydka-player-icon-button {
     width: 56px;
     min-width: 56px;
     min-height: 56px;
-    border-radius: 17px;
   }
 
-  .zydka-player-toggle-button {
-    width: 82px;
-    min-width: 82px;
-    min-height: 62px;
-    border-radius: 21px;
+  .zydka-player-toggle-button,
+  .zydka-player-toggle-button--playing {
+    width: 72px;
+    min-width: 72px;
+    min-height: 72px;
   }
 
   .zydka-player-timeline {
     grid-template-columns: 48px minmax(180px, 1fr) 48px;
     gap: 14px;
     width: min(100%, 680px);
-    margin: 24px auto 0;
+    margin: 22px auto 0;
   }
 
   .zydka-player-volume {
     grid-template-columns: 44px minmax(180px, 1fr) 48px;
     width: min(100%, 560px);
-    margin: 18px auto 0;
-    padding-top: 16px;
+    margin: 16px auto 0;
   }
 
   .zydka-player-share {
     width: min(100%, 560px);
-    margin: 14px auto 0;
+    margin: 12px auto 0;
   }
 
   .zydka-player-footer {
@@ -1030,65 +1010,22 @@
     width: 100%;
   }
 
+  /* Library panel beside the chassis. */
   .zydka-player-queue {
     height: 100%;
     max-height: none;
-    border: 1px solid rgba(255, 255, 255, 0.78);
-    border-radius: 26px;
-    background:
-      linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(255, 250, 244, 0.75)),
-      var(--zydka-card);
-    color: var(--zydka-graphite);
-    box-shadow: var(--zydka-shadow-soft);
-    backdrop-filter: blur(14px);
+    padding-bottom: 0;
+    border-radius: 28px;
+    background: linear-gradient(145deg, #1c2227, #15191d);
+    box-shadow: var(--zydka-drop), inset 0 1px 1px #ffffff14;
   }
 
   .zydka-player-queue__header {
-    padding: 24px 24px 16px;
-    border-bottom: 1px solid rgba(23, 23, 23, 0.08);
-  }
-
-  .zydka-player-queue__subtitle {
-    color: var(--zydka-muted);
+    padding: 24px 22px 14px;
   }
 
   .zydka-player-queue__list {
-    gap: 12px;
-    padding: 16px;
-  }
-
-  .zydka-player-queue__item {
-    border-color: rgba(23, 23, 23, 0.08);
-    background: rgba(255, 255, 255, 0.58);
-    color: var(--zydka-graphite);
-    box-shadow: 0 12px 26px rgba(31, 24, 16, 0.06);
-  }
-
-  .zydka-player-queue__item:hover,
-  .zydka-player-queue__item:focus {
-    border-color: rgba(189, 23, 30, 0.28);
-    background: #ffffff;
-  }
-
-  .zydka-player-queue__item--active {
-    border-color: rgba(189, 23, 30, 0.36);
-    background: rgba(189, 23, 30, 0.07);
-    box-shadow:
-      inset 4px 0 0 var(--zydka-red),
-      0 14px 30px rgba(189, 23, 30, 0.08);
-  }
-
-  .zydka-player-queue__cover {
-    border-color: rgba(23, 23, 23, 0.08);
-  }
-
-  .zydka-player-queue__track-artist,
-  .zydka-player-queue__duration {
-    color: var(--zydka-muted);
-  }
-
-  .zydka-player-queue__state {
-    color: var(--zydka-red);
+    padding: 0 14px 16px;
   }
 }
 
@@ -1138,29 +1075,35 @@
 @media (max-width: 640px) {
   .zydka-player-root {
     margin: 18px auto;
-    padding: 12px;
-    border-radius: 24px;
   }
 
   .zydka-player-card {
-    padding: 20px;
-    border-radius: 22px;
+    padding: 18px 16px 20px;
+    border-radius: 26px;
   }
 
   .zydka-player-header {
     grid-template-columns: 1fr;
   }
 
+  /* Sleeve first on phones, as in the reference mobile layout. */
   .zydka-player-header-aside {
     display: flex;
+    order: -1;
     gap: 12px;
-    align-items: center;
+    align-items: flex-end;
     justify-content: space-between;
   }
 
   .zydka-player-cover {
-    width: 86px;
-    border-radius: 18px;
+    width: 96px;
+    padding: 6px;
+    border-radius: 20px;
+  }
+
+  .zydka-player-cover-image,
+  .zydka-player-cover-fallback {
+    border-radius: 15px;
   }
 
   .zydka-player-counter {
@@ -1175,41 +1118,37 @@
   .zydka-player-buy-link {
     display: flex;
     width: 100%;
-    margin-top: 14px;
+    margin-top: 16px;
   }
 
-  .zydka-player-actions {
-    grid-template-columns: 42px 46px minmax(64px, 72px) 46px 42px;
-    gap: 8px;
-  }
-
+  .zydka-player-actions,
   .zydka-player-actions--has-queue {
-    grid-template-columns: 42px 46px minmax(64px, 72px) 46px 42px;
+    grid-template-columns: 44px 48px 64px 48px 44px;
+    gap: 10px;
   }
 
   .zydka-player-icon-button.zydka-player-mode-button {
-    width: 42px;
-    min-width: 42px;
-    min-height: 42px;
-    border-radius: 14px;
+    width: 44px;
+    min-width: 44px;
+    min-height: 44px;
   }
 
   .zydka-player-icon-button {
-    width: 46px;
-    min-width: 46px;
-    min-height: 46px;
-    border-radius: 15px;
+    width: 48px;
+    min-width: 48px;
+    min-height: 48px;
   }
 
-  .zydka-player-toggle-button {
+  .zydka-player-toggle-button,
+  .zydka-player-toggle-button--playing {
     width: 64px;
     min-width: 64px;
-    min-height: 56px;
-    border-radius: 18px;
+    min-height: 64px;
+    border-width: 4px;
   }
 
   .zydka-player-volume {
-    grid-template-columns: 44px minmax(0, 1fr) 48px;
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
     gap: 10px;
   }
 
@@ -1220,29 +1159,46 @@
   .zydka-player-queue-button {
     grid-column: 1 / -1;
     width: 100%;
-  }
-
-  .zydka-player-volume-value {
-    text-align: right;
+    margin-top: 4px;
   }
 
   .zydka-player-timeline {
-    grid-template-columns: 42px minmax(96px, 1fr) 42px;
+    grid-template-columns: 40px minmax(96px, 1fr) 40px;
     gap: 8px;
   }
 
   .zydka-player-queue__item {
-    grid-template-columns: 46px minmax(0, 1fr);
-    min-height: 66px;
-    border-radius: 16px;
+    grid-template-columns: 44px minmax(0, 1fr);
+    min-height: 68px;
   }
 
   .zydka-player-queue__cover {
-    width: 46px;
+    width: 44px;
   }
 
   .zydka-player-queue__duration {
     grid-column: 2;
     justify-self: start;
+  }
+}
+
+@media (max-width: 380px) {
+  .zydka-player-actions,
+  .zydka-player-actions--has-queue {
+    grid-template-columns: 44px 44px 60px 44px 44px;
+    gap: 6px;
+  }
+
+  .zydka-player-icon-button {
+    width: 44px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .zydka-player-toggle-button,
+  .zydka-player-toggle-button--playing {
+    width: 60px;
+    min-width: 60px;
+    min-height: 60px;
   }
 }

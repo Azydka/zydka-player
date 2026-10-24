@@ -2,7 +2,7 @@
 
 Date : 2026-10-25
 
-Statut : **développé sur la branche `feat/player-ios-volume-repeat-v051`, ni fusionné, ni déployé.** La production reste en Player 0.4.0. La 0.5.1 contient aussi les favoris de la 0.5.0.
+Statut : **fusionné dans `main` et déployé en production le 2026-10-25 vers 00:35, avec l'accord explicite du propriétaire.** La 0.5.1 contient aussi les favoris de la 0.5.0.
 
 ## Origine
 
@@ -40,7 +40,7 @@ Aucun changement dans le Manager, Analytics, WooCommerce ni dans les packages.
 | compilation esbuild de `src/index.ts` | OK, avec `howler` remplacé par un stub et `zustand` externe |
 | `git diff --check` | OK |
 
-## Validations NON faites (à lancer sous Windows avant la fusion)
+## Validations pnpm (non exécutées, remplacées par la procédure ci-dessous)
 
 Le registre npm était inaccessible depuis la session, d'où ces manques :
 
@@ -50,7 +50,17 @@ pnpm --filter @zydka/zydka-plugin typecheck
 pnpm package:wp
 ```
 
-`pnpm package:wp` régénère `assets/js/zydka-player.js`, qui n'est **pas** à jour dans cette branche. Il faut commiter le bundle régénéré avant la fusion.
+Le bundle a été régénéré sans pnpm, commit `dbaae7d` :
+
+- outil : esbuild 0.28.2, avec les options de `tsup.config.ts` (iife, es2017) ;
+- sources de howler 2.2.4 et zustand 5.0.14 tirées des tags officiels sur GitHub, aux mêmes versions que `pnpm-lock.yaml` ;
+- contrôle de fidélité : la même méthode appliquée aux sources de la 0.5.0 redonne le bundle commité, à trois écarts près, tous dus à la version d'esbuild : un `try/catch` dans l'utilitaire `__commonJS`, un `"use strict"` en moins dans le wrapper howler et la position des mentions de licence. Le code du player, de howler et de zustand est identique ;
+- test navigateur (Playwright, Chromium 375 px), sur une page locale :
+  - mode ordinateur : curseur et pourcentage visibles ;
+  - mode iPhone simulé (setter de volume neutralisé) : bloc `--system`, seul le bouton muet reste ;
+  - dans les deux modes : messages de répétition corrects, muet opérationnel, aucune erreur JS.
+
+À la prochaine occasion, lancer `pnpm test`, `typecheck` et `package:wp` sous Windows. Un bundle régénéré qui ne diffère que sur ces trois points est normal.
 
 ## Tests manuels à faire
 
@@ -59,11 +69,23 @@ pnpm package:wp
 - Trois appuis sur Répéter affichent « toute la playlist », puis « ce morceau » (avec le « 1 »), puis « désactivée ». La boucle d'un morceau rejoue bien le même titre.
 - Non-régression : lecture, seek, file, aléatoire, favoris, partage, écran verrouillé.
 
-## Déploiement (accord explicite requis)
+## Déploiement (fait le 2026-10-25)
 
-Procédure identique à celle de la 0.5.0 (`docs/passation-zydka-player-0.5.0.md`) :
-1. Sauvegarder la 0.4.0 dans `plugin-backups/`.
-2. Installer le ZIP 0.5.1, puis lancer `wp cache flush`.
-3. Vérifier que `?ver=0.5.1` est bien servi.
+Sans accès SSH ni WP-CLI, le déploiement est passé par *Extensions → Ajouter → Téléverser*, dans Chrome, avec la session admin du propriétaire.
 
-Retour arrière : réinstaller la sauvegarde 0.4.0.
+1. **Sauvegarde** : `dist/zydka-player-0.4.0-rollback.zip`, dans la copie principale du propriétaire, reconstruit depuis `c3d9b5a`.
+   - SHA-256 `dee55722…b92ee4d`.
+   - Avant le déploiement, le JS, le CSS, le PNG et le README servis en production avaient le même SHA-256 que ce ZIP. Le CSS, le README et le PHP sont en CRLF, comme en production.
+2. **ZIP 0.5.1** : `dist/zydka-player-0.5.1.zip`, SHA-256 `3e6a91ca…6f4b45`, 5 fichiers en LF.
+3. **Installation** : WordPress a affiché « Actuelle 0.4.0 / Téléversée 0.5.1 ». Après « Remplacer l'extension actuelle », il a confirmé « L'extension a bien été mise à jour ».
+4. **Contrôles**, en visiteur anonyme :
+   - extension `zydka-player` 0.5.1 active ;
+   - `/demo-track/` sert `?ver=0.5.1` ;
+   - le JS (174 949 octets) et le CSS (25 866 octets) servis ont le même SHA-256 que le ZIP ;
+   - la lecture de *Plein Jour* passe en `playing` sur une file de 6, le message « Répétition : toute la playlist » s'affiche, aucune erreur.
+
+À valider par le testeur sur iPhone 12 : curseur masqué, boutons du téléphone, messages de répétition.
+
+**Retour arrière** : *Extensions → Ajouter → Téléverser* `zydka-player-0.4.0-rollback.zip`, puis « Remplacer ». Aucune donnée n'est concernée.
+
+**Constat** : le dossier `wp-content/plugins/` contient cinq anciennes sauvegardes inactives, `zydka-player-backup-before-v06x-…` et `zydka-player-manager-backup-…`, datées de juin 2026. `AGENTS.md` demande de les ranger dans `plugin-backups/`. À trier par le propriétaire.

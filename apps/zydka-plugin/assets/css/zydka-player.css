@@ -633,6 +633,11 @@
   display: none;
 }
 
+/* Favorite: outlined heart, filled once saved (pressed key and lime dot come from the mode button). */
+.zydka-player-favorite-button--active .zydka-player-control-icon--favorite path {
+  fill: currentColor;
+}
+
 /* display: block/grid on the cover parts overrides [hidden]: without this a missing or
    failed cover shows the browser's broken-image icon on top of the letter fallback. */
 .zydka-player-cover-image[hidden],

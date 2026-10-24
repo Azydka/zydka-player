@@ -2865,6 +2865,39 @@
     }
   };
 
+  // src/favorites.ts
+  var FAVORITES_STORAGE_KEY = "zydka-player:favorites:v1";
+  function getFavoriteKey(track) {
+    var _a;
+    const id = (track == null ? void 0 : track.id) === null || (track == null ? void 0 : track.id) === void 0 ? "" : String(track.id).trim();
+    if (id) return `id:${id}`;
+    const audioUrl = ((_a = track == null ? void 0 : track.audioUrl) != null ? _a : "").trim();
+    return audioUrl ? `url:${audioUrl}` : null;
+  }
+  function parseFavorites(raw) {
+    if (!raw) return /* @__PURE__ */ new Set();
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (e) {
+      return /* @__PURE__ */ new Set();
+    }
+    if (!Array.isArray(parsed)) return /* @__PURE__ */ new Set();
+    return new Set(parsed.filter((value) => typeof value === "string" && value !== ""));
+  }
+  function serializeFavorites(favorites) {
+    return JSON.stringify(Array.from(favorites));
+  }
+  function toggleFavorite(favorites, key) {
+    const next = new Set(favorites);
+    if (next.has(key)) {
+      next.delete(key);
+    } else {
+      next.add(key);
+    }
+    return next;
+  }
+
   // src/metadataCover.ts
   var ID3_HEADER_BYTES = 10;
   var MAX_ID3_TAG_BYTES = 4 * 1024 * 1024;
@@ -3483,6 +3516,11 @@
       <path d="m20 9-4 6" />
     </svg>
   `,
+    favorite: `
+    <svg class="zydka-player-control-icon zydka-player-control-icon--favorite" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M12 18.5s-6.75-4.25-6.75-8.55A3.7 3.7 0 0 1 12 7.8a3.7 3.7 0 0 1 6.75 2.15C18.75 14.25 12 18.5 12 18.5Z" />
+    </svg>
+  `,
     share: `
     <svg class="zydka-player-control-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
       <path d="M8.75 12.7 15.25 16" />
@@ -3617,6 +3655,11 @@
     volumeControl.append(muteButton, volumeSlider, volumeValue);
     const shareControl = document.createElement("div");
     shareControl.className = "zydka-player-share";
+    const favoriteButton = document.createElement("button");
+    favoriteButton.className = "zydka-player-button zydka-player-icon-button zydka-player-mode-button zydka-player-favorite-button";
+    favoriteButton.type = "button";
+    favoriteButton.setAttribute("aria-pressed", "false");
+    setIconButton(favoriteButton, "Ajouter aux favoris", "favorite");
     const shareButton = document.createElement("button");
     shareButton.className = "zydka-player-button zydka-player-icon-button zydka-player-mode-button zydka-player-share-button";
     shareButton.type = "button";
@@ -3625,7 +3668,7 @@
     shareFeedback.className = "zydka-player-share-feedback";
     shareFeedback.setAttribute("aria-live", "polite");
     shareFeedback.hidden = true;
-    shareControl.append(shareButton, shareFeedback);
+    shareControl.append(favoriteButton, shareButton, shareFeedback);
     const queueOverlay = document.createElement("div");
     queueOverlay.className = "zydka-player-queue-overlay";
     queueOverlay.hidden = true;
@@ -3682,6 +3725,20 @@
     let isUserSeeking = false;
     let pendingSeekSeconds = null;
     let seekReleaseTimer;
+    let favoriteTrackKey = null;
+    let favoriteKeys = (() => {
+      try {
+        return parseFavorites(window.localStorage.getItem(FAVORITES_STORAGE_KEY));
+      } catch (e) {
+        return /* @__PURE__ */ new Set();
+      }
+    })();
+    const saveFavoriteKeys = () => {
+      try {
+        window.localStorage.setItem(FAVORITES_STORAGE_KEY, serializeFavorites(favoriteKeys));
+      } catch (e) {
+      }
+    };
     const getDisplayCoverUrl = (track) => {
       if (!track) return null;
       return resolveCoverUrl(track.cover, embeddedCoverUrls.get(track.audioUrl), failedCoverUrls);
@@ -4053,6 +4110,13 @@
       repeatButton.dataset.repeatMode = repeatMode;
       repeatButton.setAttribute("aria-pressed", String(repeatMode !== "off"));
       setIconButton(repeatButton, getRepeatLabel(), "repeat");
+      favoriteTrackKey = getFavoriteKey(displayTrack);
+      const isFavorite = favoriteTrackKey !== null && favoriteKeys.has(favoriteTrackKey);
+      favoriteButton.disabled = favoriteTrackKey === null;
+      favoriteButton.classList.toggle("zydka-player-mode-button--active", isFavorite);
+      favoriteButton.classList.toggle("zydka-player-favorite-button--active", isFavorite);
+      favoriteButton.setAttribute("aria-pressed", String(isFavorite));
+      setIconButton(favoriteButton, isFavorite ? "Retirer des favoris" : "Ajouter aux favoris", "favorite");
       setIconButton(shareButton, `Partager ${renderText((displayTrack == null ? void 0 : displayTrack.title) || "le morceau")}`, "share");
       previousButton.disabled = getPreviousIndex(navigation, shuffleHistory) === null;
       nextButton.disabled = !canGoNext;
@@ -4132,6 +4196,12 @@
     });
     repeatButton.addEventListener("click", () => {
       repeatMode = cycleRepeatMode(repeatMode);
+      refreshState();
+    });
+    favoriteButton.addEventListener("click", () => {
+      if (!favoriteTrackKey) return;
+      favoriteKeys = toggleFavorite(favoriteKeys, favoriteTrackKey);
+      saveFavoriteKeys();
       refreshState();
     });
     shareButton.addEventListener("click", () => {

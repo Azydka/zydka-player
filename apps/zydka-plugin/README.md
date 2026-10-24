@@ -215,6 +215,14 @@ Résultat :
 
 ## Changelog
 
+### 0.5.0 - favoris locaux
+
+- Bouton cœur à côté du partage : ajoute ou retire le morceau affiché des favoris (`aria-pressed`, libellés « Ajouter aux favoris » / « Retirer des favoris »). Actif : cœur plein, touche enfoncée et point lime.
+- Favoris propres au navigateur, sans compte ni serveur : `localStorage`, clé `zydka-player:favorites:v1`, tableau JSON de clés `id:<id>` (ou `url:<audioUrl>` si la track n'a pas d'id). Le titre n'est jamais utilisé.
+- Le cœur suit la track active (Previous, Next, file, lien `#track-…`) et retrouve son état au rechargement.
+- Stockage absent, illisible ou refusant l'écriture : ensemble vide au départ, favoris conservés pour la visite, aucune erreur affichée, lecture inchangée.
+- Pas encore de liste ni de filtre des favoris. Logique pure dans `src/favorites.ts`, couverte par `tests/favorites.test.ts`.
+
 ### 0.4.0 - design Zydka Premium UI
 
 - Interface reprise dans le langage Zydka Premium UI v1.0 : châssis graphite mat, pochette dans un logement en creux, touches en relief, bouton Lecture off-white sans halo.

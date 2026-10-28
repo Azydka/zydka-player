@@ -4,3 +4,7 @@ dist/
 build/ 
 coverage/ 
 .env 
+
+# Playwright test artifacts
+test-results/
+playwright-report/
